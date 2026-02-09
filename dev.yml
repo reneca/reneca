@@ -1,0 +1,14 @@
+---
+# ansible-pull -K -U https://github.com/reneca/reneca.git dev.yml
+# ansible-playbook -c local -i localhost, dev.yaml
+- name: Playbook for personnal development
+  hosts: localhost
+  roles:
+    - role: gcp
+
+    - role: ollama
+
+    # Install and configure Claude code only if a GCP Vertex project is available or Ollama is locally install
+    - role: claude
+      when: gcloud.core.project is defined or ollama.version is defined
+...

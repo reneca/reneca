@@ -1,0 +1,38 @@
+---
+- name: Check if ollama is installed
+  ansible.builtin.command: which ollama
+  register: ollama_installed
+  ignore_errors: yes
+  changed_when: false
+  failed_when: false
+
+- name: Get ollama version
+  ansible.builtin.shell: >
+    {{ ollama_installed.stdout }} -v | awk '{print $NF}'
+  register: ollama_version
+  ignore_errors: yes
+  changed_when: false
+  when: ollama_installed.stdout != ""
+
+- name: Get ollama models
+  ansible.builtin.shell: >
+    {{ ollama_installed.stdout }} ls |
+    sed '1d' |
+    awk '{ split($1, a, ":"); name = a[1]; tag = a[2]; printf "{\"name\": \"%s\", \"tag\": \"%s\", \"id\": \"%s\"}, ", name, tag, $2; }' |
+    sed 's/^{/[{/;s/}, $/}]/'
+  register: ollama_models
+  ignore_errors: yes
+  changed_when: false
+  when: ollama_installed.stdout != ""
+
+- name: Print ollama value
+  ansible.builtin.debug:
+    msg: "Ollama models: {{ ollama_models.stdout }}"
+
+- name: Parse the ollama JSON models and store it globally
+  ansible.builtin.set_fact:
+    ollama: {
+      'version': "{{ ollama_version.stdout }}",
+      'models': "{{ ollama_models.stdout | from_json }}"
+    }
+  when: ollama_installed.rc == 0 and ollama_version.stdout != "" and ollama_models.stdout != ""

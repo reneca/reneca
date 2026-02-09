@@ -1,0 +1,19 @@
+---
+- name: Check if Claude Code is already install
+  ansible.builtin.stat:
+    path: ~/.local/bin/claude
+  register: claude_installed
+- name: Install Claude Code
+  ansible.builtin.shell: |
+    curl -fsSL https://claude.ai/install.sh | bash
+  args:
+    executable: /bin/bash
+  when: not claude_installed.stat.exists
+
+- name: Claude Code settings
+  template:
+    mode: 0775
+    src: "templates/settings.j2"
+    dest: "~/.claude/settings.json"
+
+# TODO claude statusLine.py
