@@ -1,6 +1,6 @@
 ---
 # ansible-pull -K -U https://github.com/reneca/reneca.git dev.yml
-# ansible-playbook -c local -i localhost, dev.yaml
+# ansible-playbook -c local -i localhost, dev.yml
 - name: Playbook for personnal development
   hosts: localhost
   roles:

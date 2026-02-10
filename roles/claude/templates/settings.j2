@@ -1,17 +1,21 @@
 {
 {% if gcloud.core.project is defined %}  "env": {
     "CLAUDE_CODE_USE_VERTEX": "1",
-    "CLOUD_ML_REGION": "{{ gcloud.compute.region }}"
-    "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}"
+    "CLOUD_ML_REGION": "{{ gcloud.compute.region }}",
+    "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}",
     "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5@20251001"
   },
   "model": "claude-opus-4-6",
 {% elif ollama.version is defined %}  "env": {
-    "ANTHROPIC_AUTH_TOKEN": "ollama"
-    "ANTHROPIC_API_KEY": ""
+    "ANTHROPIC_AUTH_TOKEN": "ollama",
+    "ANTHROPIC_API_KEY": "",
     "ANTHROPIC_BASE_URL": "http://localhost:11434"
   },
-  "model": "qwen3-coder-next",
+{% if ansible_facts['memtotal_mb'] > 90000 %}
+  "model": "qwen3-coder-next:q8_0",
+{% else  %}
+  "model": "qwen3-coder",
+{% endif %}
 {% endif %}
   "permissions": {
     "allow": [
@@ -24,7 +28,7 @@
       "Read(./.env)",
       "Read(./.env.*)",
       "Read(./secrets/**)",
-      "Read(./private.eyaml)",
+      "Read(./private.eyaml)"
     ]
   },
   "statusLine": {

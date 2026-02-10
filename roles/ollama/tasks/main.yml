@@ -25,10 +25,6 @@
   changed_when: false
   when: ollama_installed.stdout != ""
 
-- name: Print ollama value
-  ansible.builtin.debug:
-    msg: "Ollama models: {{ ollama_models.stdout }}"
-
 - name: Parse the ollama JSON models and store it globally
   ansible.builtin.set_fact:
     ollama: {
