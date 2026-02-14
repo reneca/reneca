@@ -18,7 +18,13 @@ data = json.load(sys.stdin)
 model_name = data['model']['display_name']
 current_dir = os.path.basename(data['workspace']['current_dir'])
 cost = data['cost']['total_cost_usd']
+
+# Context window
 used_context = data['context_window']['used_percentage']
+if used_context is not None:
+    context_window = f" | 🪟 {used_context}% ctx"
+else:
+    context_window = ""
 
 # Check for git branch
 git_branch = ""
@@ -48,8 +54,8 @@ if os.path.exists('.git'):
                     if deleted: parts.append(f"{RED}-{deleted}{RESET}")
                     if parts: stats = f" [{' '.join(parts)}]"
 
-                git_branch = f" ⎇ {branch_name}{stats}"
+                git_branch = f" 🔀 {branch_name}{stats}"
     except:
         pass
 
-print(f"{current_dir}{git_branch} | 🤖 {BLUE}{model_name}{RESET} | {cost:.2f}$ | {used_context}% ctx")
+print(f"{current_dir}{git_branch} | 🤖 {BLUE}{model_name}{RESET} | 💰 {RED}{cost:.2f}${RESET}{context_window}")

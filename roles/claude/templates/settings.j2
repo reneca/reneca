@@ -1,21 +1,25 @@
 {
-{% if ollama.host is defined %}  "env": {
+{% if ollama.host is defined %}
+  {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 %}
+    {%- set default_model = "qwen3-coder-next:q8_0" %}
+  {%- else %}
+    {%- set default_model = "devstral-small-2" %}
+  {%- endif %}
+  "env": {
+    "API_TIMEOUT_MS": "600000",
     "ANTHROPIC_AUTH_TOKEN": "ollama",
     "ANTHROPIC_API_KEY": "",
     "ANTHROPIC_BASE_URL": "{{ ollama.host }}",
-    "ANTHROPIC_SMALL_FAST_MODEL": "devstral-small-2",
-    "API_TIMEOUT_MS": "600000"
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ default_model }}",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "devstral-small-2"
   },
-{% if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 %}
-  "model": "qwen3-coder-next:q8_0",
-{% else  %}
-  "model": "devstral-small-2",
-{% endif %}
-{% elif gcloud.core.project is defined %}  "env": {
+  "model": "{{ default_model }}",
+{% elif gcloud.core.project is defined %}
+  "env": {
     "CLAUDE_CODE_USE_VERTEX": "1",
     "CLOUD_ML_REGION": "europe-west1",
     "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}",
-    "ANTHROPIC_SMALL_FAST_MODEL": "claude-haiku-4-5@20251001"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5@20251001"
   },
   "model": "claude-opus-4-6",
 {% endif %}
