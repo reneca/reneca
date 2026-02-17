@@ -8,14 +8,14 @@
 
 - name: Check vscode extensions if installed
   ansible.builtin.shell: >
-    echo "{" && code --list-extensions --show-versions | awk -F '@' '{print "\""$1"\": \""$2"\","}' | sed '$ s/,$//' && echo "}"
+    echo "{" && code --list-extensions --show-versions | awk -F '@' '{print "\""$1"\": \""$2"\","}' | sed '$ s/,$/}/'
   register: vscode_extensions
   changed_when: false
   when:
     - vscode_version.rc == 0
     - vscode_version.stdout != ""
 
-- name: Set VSCode facts if its installed
+- name: Set vscode facts if its installed
   ansible.builtin.set_fact:
     vscode: {
       'version': "{{ vscode_version.stdout }}",
