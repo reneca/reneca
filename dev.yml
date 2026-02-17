@@ -4,11 +4,15 @@
 - name: Playbook for personnal development
   hosts: localhost
   roles:
+    - role: vscode
+
     - role: gcp
 
     - role: ollama
 
     # Install and configure Claude code only if a GCP Vertex project is available or Ollama is locally install
     - role: claude
-      when: ollama.host is defined or gcloud.core.project is defined
+      when: >
+        ollama.host is defined
+        or gcloud.core.project is defined
 ...
