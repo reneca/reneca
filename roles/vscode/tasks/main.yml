@@ -1,14 +1,14 @@
 ---
 - name: Get vscode version
   ansible.builtin.shell: >
-    code -v | head -1
+    code -v | grep "^[0-9.]*$" | head -1
   register: vscode_version
-  ignore_errors: yes
+  ignore_errors: true
   changed_when: false
 
 - name: Check vscode extensions if installed
   ansible.builtin.shell: >
-    echo "{" && code --list-extensions --show-versions | awk -F '@' '{print "\""$1"\": \""$2"\","}' | sed '$ s/,$/}/'
+    echo "{" && code --list-extensions --show-versions | grep "^[a-z.-]*@[0-9.]*$" | awk -F '@' '{print "\""$1"\": \""$2"\","}' | sed '$ s/,$/}/'
   register: vscode_extensions
   changed_when: false
   when:
