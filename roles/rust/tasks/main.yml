@@ -16,7 +16,6 @@
     rustc -V | cut -d' ' -f2
   register: rust_version
   changed_when: false
-  when: rust_installed.rc == 0
 
 - name: Set Rust facts
   ansible.builtin.set_fact:
