@@ -18,7 +18,7 @@
     zed -v | cut -d' ' -f2
   register: zed_version
   changed_when: false
-  when: zed_installed.rc == 0 or '"microsoft" not in ansible_facts["kernel"]'
+  when: zed_installed.rc == 0 or "microsoft" not in ansible_facts["kernel"]
 
 - name: Set Zed facts
   ansible.builtin.set_fact:
@@ -30,7 +30,7 @@
         })
       }}
   when:
-    - zed_installed.rc == 0 or '"microsoft" not in ansible_facts["kernel"]'
+    - zed_installed.rc == 0 or "microsoft" not in ansible_facts["kernel"]
     - zed_version.rc == 0
 
 - name: Add Ollama agent provider
@@ -65,7 +65,4 @@
     - { key: "settings", value: "{{ zed.settings }}" }
     - { key: "keymap", value: "{{ zed.keymap }}" }
   when: zed.config_dir is defined
-
-- name: Print Zed variables
-  ansible.builtin.debug:
-    msg: Zed {{ zed }}
+...
