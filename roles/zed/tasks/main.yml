@@ -1,0 +1,71 @@
+---
+- name: Check if zed is already install
+  command: which zed
+  register: zed_installed
+  ignore_errors: true
+  changed_when: false
+
+- name: Install Zed
+  shell: curl -f https://zed.dev/install.sh | sh
+  args:
+    executable: /bin/bash
+  when:
+    - zed_installed.rc != 0
+    - '"microsoft" not in ansible_facts["kernel"]'
+
+- name: Get Zed version
+  ansible.builtin.shell: >
+    zed -v | cut -d' ' -f2
+  register: zed_version
+  changed_when: false
+  when: zed_installed.rc == 0 or '"microsoft" not in ansible_facts["kernel"]'
+
+- name: Set Zed facts
+  ansible.builtin.set_fact:
+    zed: >-
+      {{
+        zed | combine({
+          'version': zed_version.stdout,
+          'config_dir': lookup('env', 'XDG_CONFIG_HOME') | default(ansible_facts['env'].HOME + '/.config', true) + '/zed'
+        })
+      }}
+  when:
+    - zed_installed.rc == 0 or '"microsoft" not in ansible_facts["kernel"]'
+    - zed_version.rc == 0
+
+- name: Add Ollama agent provider
+  ansible.builtin.set_fact:
+    zed: >-
+      {{
+        zed | combine({
+          'settings': zed.settings | combine(
+            {
+              'agent': {
+                'default_model': {
+                  'provider': 'ollama',
+                  'model': 'qwen3-coder-next:q8_0' if (ansible_facts['memtotal_mb'] > 90000) else 'qwen3-coder'
+                }
+              }
+            },
+            recursive=true
+          )
+        })
+      }}
+  when:
+    - zed.version is defined
+    - ollama is defined
+    - ollama.version is defined
+
+- name: Create Zed configuration files from defaults
+  ansible.builtin.copy:
+    mode: '0644'
+    dest: "{{ zed.config_dir }}/{{ item.key }}.json"
+    content: "{{ item.value | to_nice_json(indent=2) }}"
+  loop:
+    - { key: "settings", value: "{{ zed.settings }}" }
+    - { key: "keymap", value: "{{ zed.keymap }}" }
+  when: zed.config_dir is defined
+
+- name: Print Zed variables
+  ansible.builtin.debug:
+    msg: Zed {{ zed }}

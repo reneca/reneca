@@ -1,0 +1,24 @@
+---
+zed:
+  settings:
+    buffer_line_height: "standard"
+    telemetry:
+      diagnostics: false
+      metrics: false
+    minimap:
+      show: "auto"
+    file_types: {}
+    base_keymap: "VSCode"
+    ui_font_size: 16
+    buffer_font_size: 14.0
+    theme:
+      mode: "system"
+      light: "One Light"
+      dark: "One Dark"
+  keymap:
+    - context: "Workspace"
+      bindings:
+        alt-cmd-s: "workspace::SaveAs"
+    - context: "Workspace"
+      bindings:
+        cmd-shift-s: "workspace::SaveAll"

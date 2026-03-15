@@ -2,7 +2,7 @@
 - name: Check if ollama is installed
   ansible.builtin.command: which ollama
   register: ollama_installed
-  ignore_errors: yes
+  ignore_errors: true
   changed_when: false
   failed_when: false
 
@@ -10,9 +10,11 @@
   ansible.builtin.shell: >
     {{ ollama_installed.stdout }} -v | awk '{print $NF}'
   register: ollama_version
-  ignore_errors: yes
+  ignore_errors: true
   changed_when: false
-  when: ollama_installed.stdout != ""
+  when:
+   - ollama_installed.rc == 0
+   - ollama_installed.stdout != ""
 
 - name: Parse the ollama JSON models and store it globally
   ansible.builtin.set_fact:
@@ -20,7 +22,9 @@
       'version': "{{ ollama_version.stdout }}",
       'host': "{{ lookup('ansible.builtin.env', 'OLLAMA_HOST', default='http://localhost:11434') }}"
     }
-  when: ollama_installed.rc == 0 and ollama_version.stdout != ""
+  when:
+   - ollama_installed.rc == 0
+   - ollama_version.stdout != ""
 
 - name: Set ollama host fact if define
   ansible.builtin.set_fact:

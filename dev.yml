@@ -4,15 +4,32 @@
 - name: Playbook for personnal development
   hosts: localhost
   roles:
+    - role: rust
+
     - role: vscode
 
     - role: gcp
 
     - role: ollama
 
+    # Install Zed except for a WSL
+    - role: zed
+
     # Install and configure Claude code only if a GCP Vertex project is available or Ollama is locally install
     - role: claude
       when: >
         ollama.host is defined
         or gcloud.core.project is defined
+
+  tasks:
+    - name: Playbook facts
+      ansible.builtin.debug:
+        msg: "{{ item.value }}"
+      loop:
+        - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{rust.version is defined}}"}
+        - {name: "GCloud", value: "{{ gcloud }}", when: "{{gcloud.core is defined and gcloud.core | length > 0}}"}
+        - {name: "Ollama", value: "{{ ollama }}", when: "{{ollama.version is defined}}"}
+      loop_control:
+        label: "{{ item.name }}"
+      when: item.when | bool
 ...

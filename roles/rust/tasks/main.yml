@@ -1,0 +1,25 @@
+---
+- name: Check if rust is already install
+  command: which rustup
+  register: rust_installed
+  ignore_errors: true
+  changed_when: false
+
+- name: Install Rust
+  shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q
+  args:
+    executable: /bin/bash
+  when: rust_installed.rc != 0
+
+- name: Get Rust version
+  ansible.builtin.shell: >
+    rustc -V | cut -d' ' -f2
+  register: rust_version
+  changed_when: false
+  when: rust_installed.rc == 0
+
+- name: Set Rust facts
+  ansible.builtin.set_fact:
+    rust:
+      version: "{{ rust_version.stdout }}"
+...
