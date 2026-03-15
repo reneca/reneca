@@ -11,14 +11,23 @@
     executable: /bin/bash
   when:
     - zed_installed.rc != 0
+    - ansible_facts['os_family'] != "Darwin"
     - '"microsoft" not in ansible_facts["kernel"]'
+
+- name: Install Zed vith Homebrew (macOS)
+  ansible.builtin.homebrew_cask:
+    name: zed
+    state: present
+  when:
+    - zed_installed.rc != 0
+    - ansible_facts['os_family'] == "Darwin"
 
 - name: Get Zed version
   ansible.builtin.shell: >
     zed -v | cut -d' ' -f2
   register: zed_version
   changed_when: false
-  when: zed_installed.rc == 0 or "microsoft" not in ansible_facts["kernel"]
+  when: zed_installed.rc == 0 or ansible_facts['os_family'] == "Darwin" or "microsoft" not in ansible_facts["kernel"]
 
 - name: Set Zed facts
   ansible.builtin.set_fact:
@@ -30,7 +39,7 @@
         })
       }}
   when:
-    - zed_installed.rc == 0 or "microsoft" not in ansible_facts["kernel"]
+    - zed_installed.rc == 0 or ansible_facts['os_family'] == "Darwin" or "microsoft" not in ansible_facts["kernel"]
     - zed_version.rc == 0
 
 - name: Add Ollama agent provider
