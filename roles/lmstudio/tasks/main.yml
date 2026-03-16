@@ -1,0 +1,61 @@
+---
+- name: Check if lmstudio is installed
+  ansible.builtin.command: which lms
+  register: lmstudio_installed
+  ignore_errors: true
+  changed_when: false
+  failed_when: false
+
+- name: Get lmstudio version
+  ansible.builtin.shell: >
+    {{ lmstudio_installed.stdout }} -v | awk '{print $NF}'
+  register: lmstudio_version
+  ignore_errors: true
+  changed_when: false
+  when:
+    - lmstudio_installed.rc == 0
+    - lmstudio_installed.stdout != ""
+
+- name: Retrieve LMS server info
+  ansible.builtin.command: "{{ lmstudio_installed.stdout }} server status --json"
+  register: lms_status
+  ignore_errors: true
+  changed_when: false
+  when:
+    - lmstudio_installed.rc == 0
+    - lmstudio_installed.stdout != ""
+
+- name: Set lmstudio fact from local
+  ansible.builtin.set_fact:
+    lmstudio: >
+      {{
+        {
+          'version': lmstudio_version.stdout | trim,
+          'running': (lms_status.stdout | from_json).running | default(false)
+        }
+        | combine(
+          {
+            'host': 'http://localhost:' + ((lms_status.stdout | from_json).port | string)
+          }
+          if (lms_status.stdout | from_json).running | default(false)
+          and (lms_status.stdout | from_json).port is defined
+          else {}
+        )
+      }}
+  when:
+    - lmstudio_installed.rc == 0
+    - lmstudio_installed.stdout != ""
+    - lmstudio_version.rc == 0
+    - lmstudio_version.stdout != ""
+    - lms_status.rc == 0
+    - lms_status.stdout != ""
+
+- name: Set lmstudio fact from remote
+  ansible.builtin.set_fact:
+    lmstudio:
+      running: true
+      host: "{{ lookup('ansible.builtin.env', 'LMSTUDIO_HOST') }}"
+  when:
+    - lmstudio_installed.rc != 0
+    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST') != ""
+...

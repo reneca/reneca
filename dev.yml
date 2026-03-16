@@ -4,6 +4,8 @@
 - name: Playbook for personnal development
   hosts: localhost
   roles:
+    - role: system
+
     - role: rust
 
     - role: vscode
@@ -11,6 +13,7 @@
     - role: gcp
 
     - role: ollama
+    - role: lmstudio
 
     # Install Zed except for a WSL
     - role: zed
@@ -18,7 +21,8 @@
     # Install and configure Claude code only if a GCP Vertex project is available or Ollama is locally install
     - role: claude
       when: >
-        ollama.host is defined
+        (lmstudio is defined and lmstudio.host is defined)
+        or ollama.host is defined
         or gcloud.core.project is defined
 
   tasks:
@@ -29,6 +33,7 @@
         - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{rust.version is defined}}"}
         - {name: "GCloud", value: "{{ gcloud }}", when: "{{gcloud.core is defined and gcloud.core | length > 0}}"}
         - {name: "Ollama", value: "{{ ollama }}", when: "{{ollama.version is defined}}"}
+        - {name: "LMStudio", value: "{{ lmstudio }}", when: "{{lmstudio is defined}}"}
       loop_control:
         label: "{{ item.name }}"
       when: item.when | bool

@@ -16,7 +16,7 @@
    - ollama_installed.rc == 0
    - ollama_installed.stdout != ""
 
-- name: Parse the ollama JSON models and store it globally
+- name: Set ollama fact from local
   ansible.builtin.set_fact:
     ollama: {
       'version': "{{ ollama_version.stdout }}",

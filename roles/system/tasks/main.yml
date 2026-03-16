@@ -1,0 +1,10 @@
+---
+- name: Define ZSH_THEME
+  ansible.builtin.lineinfile:
+    path: "~/.zshrc"
+    regexp: '^ZSH_THEME='
+    line: 'ZSH_THEME="gentoo"'
+    create: no
+    state: present
+  ignore_errors: true
+...
