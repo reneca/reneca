@@ -30,10 +30,10 @@
       ansible.builtin.debug:
         msg: "{{ item.value }}"
       loop:
-        - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{rust.version is defined}}"}
-        - {name: "GCloud", value: "{{ gcloud }}", when: "{{gcloud.core is defined and gcloud.core | length > 0}}"}
-        - {name: "Ollama", value: "{{ ollama }}", when: "{{ollama.version is defined}}"}
-        - {name: "LMStudio", value: "{{ lmstudio }}", when: "{{lmstudio is defined}}"}
+        - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{ rust.version is defined }}"}
+        - {name: "GCloud", value: "{{ gcloud }}", when: "{{ gcloud.core is defined and gcloud.core | length > 0 }}"}
+        - {name: "Ollama", value: "{{ ollama }}", when: "{{ ollama.version is defined }}"}
+        - {name: "LMStudio", value: "{{ lmstudio | default(omit) }}", when: "{{ lmstudio is defined and lmstudio | length > 0 }}"}
       loop_control:
         label: "{{ item.name }}"
       when: item.when | bool
