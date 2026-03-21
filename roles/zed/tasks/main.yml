@@ -42,28 +42,52 @@
     - zed_installed.rc == 0 or ansible_facts['os_family'] == "Darwin" or "microsoft" not in ansible_facts["kernel"]
     - zed_version.rc == 0
 
-- name: Add Ollama agent provider
+- name: Add LMStudio or Ollama agent provider
   ansible.builtin.set_fact:
     zed: >-
       {{
         zed | combine({
           'settings': zed.settings | combine(
             {
+              'disable_ai': false,
+              'agent_ui_font_size': 14.0,
               'agent': {
                 'default_model': {
-                  'provider': 'ollama',
+                  'provider': 'ollama' if (ollama is defined and ollama.host is defined) else 'lmstudio',
                   'model': 'qwen3-coder-next:q8_0' if (ansible_facts['memtotal_mb'] > 90000) else 'qwen3-coder'
                 }
-              }
+              },
+              'edit_predictions': {
+                'provider': 'ollama' if (ollama is defined and ollama.host is defined) else 'lmstudio'
+              },
+              'language_models': (
+                {
+                  'ollama': {
+                    'api_url': ollama.host,
+                    'auto_discover': true,
+                  }
+                } if (ollama is defined and ollama.host is defined) else
+                {
+                  'lmstudio': {
+                    'api_url': lmstudio.host + '/api/v1'
+                  }
+                }
+              )
             },
             recursive=true
-          )
+          ),
+          'keymap': zed.keymap + [{
+              'context': '!ContextEditor > (Editor && mode == full)',
+              'bindings':
+              {
+                'cmd-k': 'assistant::InlineAssist'
+              }
+            }]
         })
       }}
   when:
     - zed.version is defined
-    - ollama is defined
-    - ollama.version is defined
+    - (ollama is defined and ollama.host is defined) or (lmstudio is defined and lmstudio.host is defined)
 
 - name: Check if Zed configuration folder exist (after first launch)
   ansible.builtin.stat:

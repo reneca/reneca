@@ -2,23 +2,66 @@
 zed:
   settings:
     buffer_line_height: "standard"
+    disable_ai: true
     telemetry:
       diagnostics: false
       metrics: false
     minimap:
       show: "auto"
+    collaboration_panel:
+      button: false
+    notification_panel:
+      button: false
     file_types: {}
     base_keymap: "VSCode"
-    ui_font_size: 16
+    ui_font_size: 14.0
     buffer_font_size: 14.0
+    colorize_brackets: true
+    tabs:
+      show_diagnostics: "errors"
+      file_icons: true
+      git_status: true
+    indent_guides:
+      enabled: true
+      coloring: "indent_aware"
+    project_panel:
+      indent_size: 16
+    terminal:
+      dock: "right"
+      default_width: 640
+      font_size: 14.0
+      line_height: "standard"
+    diagnostics:
+      button: false
+      include_warnings: true
+      inline:
+        enabled: true
     theme:
       mode: "system"
       light: "One Light"
       dark: "One Dark"
   keymap:
+    - context: "Editor"
+      bindings:
+        cmd-shift-r: "editor::Rename"
+    - context: "Editor"
+      bindings:
+        alt-escape: "editor::ShowCompletions"
+    - context: "Editor"
+      bindings:
+        cmd-/:
+          - "editor::ToggleComments"
+          - advance_downwards: false
+    - context: "Workspace"
+      bindings:
+        ctrl-shift-t: "workspace::NewTerminal"
     - context: "Workspace"
       bindings:
         alt-cmd-s: "workspace::SaveAs"
     - context: "Workspace"
       bindings:
         cmd-shift-s: "workspace::SaveAll"
+    - context: "Workspace"
+      bindings:
+        cmd-shift-g: "git_panel::ToggleFocus"
+...
