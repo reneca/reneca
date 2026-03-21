@@ -1,5 +1,5 @@
 ---
-# ansible-pull -K -U https://github.com/reneca/reneca.git dev.yml
+# ansible-pull -U https://github.com/reneca/reneca.git dev.yml
 # ansible-playbook -c local -i localhost, dev.yml
 - name: Playbook for personnal development
   hosts: localhost
@@ -9,6 +9,8 @@
     - role: rust
 
     - role: vscode
+      when: >
+        has_gui is defined and has_gui == true
 
     - role: gcp
 
@@ -17,6 +19,8 @@
 
     # Install Zed except for a WSL
     - role: zed
+      when: >
+        has_gui is defined and has_gui == true
 
     # Install and configure Claude code only if a GCP Vertex project is available or Ollama is locally install
     - role: claude
@@ -30,6 +34,7 @@
       ansible.builtin.debug:
         msg: "{{ item.value }}"
       loop:
+        - {name: "GUI", value: "{{ has_gui | default(omit) }}", when: "{{ has_gui is defined }}"}
         - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{ rust.version is defined }}"}
         - {name: "GCloud", value: "{{ gcloud }}", when: "{{ gcloud.core is defined and gcloud.core | length > 0 }}"}
         - {name: "Ollama", value: "{{ ollama }}", when: "{{ ollama.version is defined }}"}

@@ -1,0 +1,24 @@
+# Git aliases
+alias gst='git status'
+alias ga='git add'
+alias gc='git commit -m'
+alias gp='git push'
+alias gpl='git pull'
+alias gco='git checkout'
+alias gb='git branch'
+alias gd='git diff'
+alias gl='git log'
+
+# Development
+{% if ansible_facts['os_family'] == 'Darwin' %}
+alias tf="/Applications/terraform"
+{% else %}
+alias tf="terraform"
+{% endif %}
+{% if container_runtime is defined %}
+alias d="{{ container_runtime }}"
+alias di="{{ container_runtime }} images"
+alias dc="{{ container_runtime }} compose"
+alias hugo="{{ container_runtime }} run --rm -it -v \$(pwd):/src -p 1313:1313 klakegg/hugo"
+{% endif %}
+alias k="kubectl"

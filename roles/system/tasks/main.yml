@@ -1,4 +1,51 @@
 ---
+- name: Check for graphical environment
+  ansible.builtin.shell: |
+    if [ "$(uname)" = "Darwin" ]; then
+      # Check for WindowServer on MacOS
+      if pgrep -x WindowServer > /dev/null; then
+        echo "true"
+      else
+        echo "false"
+      fi
+    else
+      # Check for DISPLAY or Xorg/Wayland on Linux
+      if [ -n "$DISPLAY" ]; then
+        echo "true"
+      elif ps aux | grep -E 'Xorg|wayland' | grep -v grep; then
+        echo "true"
+      else
+        echo "false"
+      fi
+    fi
+  register: has_gui_check
+  ignore_errors: true
+  changed_when: false
+  failed_when: false
+
+- name: Set graphical environment fact
+  ansible.builtin.set_fact:
+    has_gui: "{{ has_gui_check.stdout == 'true' }}"
+
+- name: Check if Docker is installed
+  ansible.builtin.command: which docker
+  register: docker_installed
+  ignore_errors: true
+  changed_when: false
+  failed_when: false
+
+- name: Check if Podman is installed
+  ansible.builtin.command: which podman
+  register: podman_installed
+  ignore_errors: true
+  changed_when: false
+  failed_when: false
+
+- name: Set container runtime executable
+  ansible.builtin.set_fact:
+    container_runtime: "{{ ('docker' if docker_installed.rc == 0 else 'podman') | trim }}"
+  when: docker_installed.rc == 0 or podman_installed.rc == 0
+
 - name: Define ZSH_THEME
   ansible.builtin.lineinfile:
     path: "~/.zshrc"
@@ -7,4 +54,10 @@
     create: no
     state: present
   ignore_errors: true
+
+- name: Define terminal aliases
+  template:
+    mode: '0644'
+    src: "templates/aliases.j2"
+    dest: "~/.aliases"
 ...
