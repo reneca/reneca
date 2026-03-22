@@ -10,6 +10,9 @@ alias gd='git diff'
 alias gl='git log'
 
 # Development
+{% if has_gui is defined and has_gui == true %}
+alias z='zed'
+{% endif %}
 {% if ansible_facts['os_family'] == 'Darwin' %}
 alias tf="/Applications/terraform"
 {% else %}
