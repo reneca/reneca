@@ -74,7 +74,4 @@ zed:
     - context: "Workspace"
       bindings:
         cmd-shift-s: "workspace::SaveAll"
-    - context: "Workspace"
-      bindings:
-        cmd-shift-g: "git_panel::ToggleFocus"
 ...
