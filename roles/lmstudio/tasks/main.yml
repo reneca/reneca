@@ -49,6 +49,7 @@
     - lmstudio_version.stdout != ""
     - lms_status.rc == 0
     - lms_status.stdout != ""
+    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST') == ""
 
 - name: Set lmstudio fact from remote
   ansible.builtin.set_fact:
@@ -56,6 +57,5 @@
       running: true
       host: "{{ lookup('ansible.builtin.env', 'LMSTUDIO_HOST') }}"
   when:
-    - lmstudio_installed.rc != 0
     - lookup('ansible.builtin.env', 'LMSTUDIO_HOST') != ""
 ...
