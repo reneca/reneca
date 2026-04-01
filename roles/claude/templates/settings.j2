@@ -8,7 +8,9 @@
     {%- set default_model = "qwen3-coder" %}
   {%- endif %}
   "env": {
-    "API_TIMEOUT_MS": "3000000",
+    "API_TIMEOUT_MS": "3600000",
+    "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
+    "DISABLE_TELEMETRY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
     "ANTHROPIC_API_KEY": "",
 {% if lmstudio.host is defined %}
@@ -20,7 +22,7 @@
 {% endif %}
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ default_model }}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ default_model }}",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "qwen3-coder"
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ default_model }}"
   },
   "model": "{{ default_model }}",
 {% elif gcloud.core.project is defined %}
