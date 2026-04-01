@@ -1,5 +1,9 @@
 ---
+# For MacOS
 # ansible-pull -U https://github.com/reneca/reneca.git dev.yml
+# For Linux package installation
+# ansible-pull -K -U https://github.com/reneca/reneca.git dev.yml
+# For testing
 # ansible-playbook -c local -i localhost, dev.yml
 - name: Playbook for personnal development
   hosts: localhost

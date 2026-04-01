@@ -46,6 +46,26 @@
     container_runtime: "{{ ('docker' if docker_installed.rc == 0 else 'podman') | trim }}"
   when: docker_installed.rc == 0 or podman_installed.rc == 0
 
+- name: Install prerequisites packages (Linux)
+  become: true
+  ansible.builtin.package:
+    name:
+      - vim
+      - git
+      - just
+    state: latest
+  when:
+    - ansible_facts['system'] == "Linux"
+
+- name: Install Homebrew prerequisites (macOS)
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - "just"
+  when:
+    - ansible_facts['os_family'] == "Darwin"
+
 - name: Define ZSH_THEME
   ansible.builtin.lineinfile:
     path: "~/.zshrc"

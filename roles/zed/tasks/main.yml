@@ -15,9 +15,9 @@
     - '"microsoft" not in ansible_facts["kernel"]'
 
 - name: Install Zed vith Homebrew (macOS)
-  ansible.builtin.homebrew_cask:
+  community.general.homebrew_cask:
     name: zed
-    state: present
+    state: latest
   when:
     - zed_installed.rc != 0
     - ansible_facts['os_family'] == "Darwin"

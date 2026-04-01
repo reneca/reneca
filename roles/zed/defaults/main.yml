@@ -49,6 +49,7 @@ zed:
       dockerfile: true
       docker-compose: true
       jinja2: true
+      just: true
       material-icon-theme: true
       puppet: true
       terraform: true
