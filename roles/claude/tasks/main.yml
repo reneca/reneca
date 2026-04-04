@@ -10,6 +10,44 @@
     executable: /bin/bash
   when: not claude_installed.stat.exists
 
+- name: Define Claude Code settings facts
+  ansible.builtin.set_fact:
+    claude_code:
+      base_url: >-
+        {% if lmstudio.host is defined -%}
+          {{- lmstudio.host -}}
+        {%- elif ollama.host is defined -%}
+          {{- ollama.host -}}
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          https://openrouter.ai/api
+        {%- else -%}
+          undefined
+        {%- endif %}
+      auth_token: >-
+        {% if lmstudio.host is defined -%}
+          lmstudio
+        {%- elif ollama.host is defined -%}
+          ollama
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY') }}
+        {%- else -%}
+          undefined
+        {%- endif %}
+      model: >-
+        {% if lmstudio.host is defined -%}
+          qwen/qwen3-coder-next
+        {%- elif ollama.host is defined -%}
+          {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
+            qwen3-coder-next:q8_0
+          {%- else -%}
+            qwen3-coder
+          {%- endif -%}
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          qwen/qwen3.6-plus:free
+        {%- else -%}
+          claude-opus-4-6
+        {%- endif -%}
+
 - name: Claude Code settings
   template:
     mode: '0644'

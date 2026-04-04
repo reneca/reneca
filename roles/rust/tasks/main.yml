@@ -21,4 +21,12 @@
   ansible.builtin.set_fact:
     rust:
       version: "{{ rust_version.stdout }}"
+
+- name: Install Rust packages
+  community.general.cargo:
+    name: "{{ item }}"
+    state: latest
+  loop:
+    - just
+    - cargo-prosa
 ...

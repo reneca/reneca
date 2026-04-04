@@ -1,41 +1,28 @@
 {
-{% if lmstudio.host is defined or ollama.host is defined %}
-  {% if lmstudio.host is defined %}
-    {%- set default_model = "qwen/qwen3-coder-next" %}
-  {%- elif ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 %}
-    {%- set default_model = "qwen3-coder-next:q8_0" %}
-  {%- else %}
-    {%- set default_model = "qwen3-coder" %}
-  {%- endif %}
   "env": {
+{% if lmstudio.host is defined or ollama.host is defined %}
     "API_TIMEOUT_MS": "3600000",
     "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
+{% endif %}
+{% if lmstudio.host is defined or ollama.host is defined or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' %}
     "DISABLE_TELEMETRY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
+    "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
+    "ANTHROPIC_AUTH_TOKEN": "{{ claude_code.auth_token }}",
     "ANTHROPIC_API_KEY": "",
-{% if lmstudio.host is defined %}
-    "ANTHROPIC_AUTH_TOKEN": "lmstudio",
-    "ANTHROPIC_BASE_URL": "{{ lmstudio.host }}",
-{% elif ollama.host is defined %}
-    "ANTHROPIC_AUTH_TOKEN": "ollama",
-    "ANTHROPIC_BASE_URL": "{{ ollama.host }}",
-{% endif %}
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ default_model }}",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ default_model }}",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ default_model }}"
-  },
-  "model": "{{ default_model }}",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"
 {% elif gcloud.core.project is defined %}
-  "env": {
     "CLAUDE_CODE_USE_VERTEX": "1",
     "CLOUD_ML_REGION": "europe-west1",
     "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5"
-  },
-  "model": "claude-opus-4-6",
 {% endif %}
+  },
+  "model": "{{ claude_code.model }}",
   "permissions": {
     "defaultMode": "acceptEdits",
     "additionalDirectories": [ "/tmp" ],

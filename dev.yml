@@ -30,37 +30,19 @@
         (lmstudio is defined and lmstudio.host is defined)
         or ollama.host is defined
         or gcloud.core.project is defined
+        or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
 
   tasks:
     - name: Playbook facts
       ansible.builtin.debug:
         msg: "{{ item.value }}"
       loop:
-        - {
-            name: "GUI",
-            value: "{{ has_gui | default(omit) }}",
-            when: "{{ has_gui is defined }}",
-          }
-        - {
-            name: "Rust",
-            value: "{{ {'version': rust.version} }}",
-            when: "{{ rust.version is defined }}",
-          }
-        - {
-            name: "GCloud",
-            value: "{{ gcloud }}",
-            when: "{{ gcloud.core is defined and gcloud.core | length > 0 }}",
-          }
-        - {
-            name: "Ollama",
-            value: "{{ ollama }}",
-            when: "{{ ollama.version is defined }}",
-          }
-        - {
-            name: "LMStudio",
-            value: "{{ lmstudio | default(omit) }}",
-            when: "{{ lmstudio is defined and lmstudio | length > 0 }}",
-          }
+        - {name: "GUI", value: "{{ has_gui | default(omit) }}", when: "{{ has_gui is defined }}"}
+        - {name: "Rust", value: "{{ {'version': rust.version} }}", when: "{{ rust.version is defined }}"}
+        - {name: "GCloud", value: "{{ gcloud }}", when: "{{ gcloud.core is defined and gcloud.core | length > 0 }}"}
+        - {name: "Ollama", value: "{{ ollama }}", when: "{{ ollama.version is defined }}"}
+        - {name: "LMStudio", value: "{{ lmstudio | default(omit) }}", when: "{{ lmstudio is defined and lmstudio | length > 0 }}"}
+        - {name: "Claude Code", value: "{{ {'base_url': claude_code.base_url | default(omit), 'model': claude_code.model | default(omit)} }}", when: "{{ claude_code is defined and claude_code.base_url is defined and claude_code.model is defined }}"}
       loop_control:
         label: "{{ item.name }}"
       when: item.when | bool
