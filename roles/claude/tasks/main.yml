@@ -28,8 +28,6 @@
           {{ ollama.host }}
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           https://openrouter.ai/api
-        {%- else -%}
-          undefined
         {%- endif %}
       auth_token: >-
         {% if lmstudio.host is defined -%}
@@ -38,8 +36,6 @@
           ollama
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY') }}
-        {%- else -%}
-          undefined
         {%- endif %}
       model: >-
         {% if lmstudio.host is defined -%}

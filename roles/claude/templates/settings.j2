@@ -7,17 +7,15 @@
     "API_TIMEOUT_MS": "3600000",
     "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
 {% endif %}
-{% if lmstudio.host is defined or ollama.host is defined or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' %}
     "DISABLE_TELEMETRY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-    "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
+{% if claude_code.base_url != None %}
+{% if claude_code.api_key_helper %}
+    "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "21600000",
+{% elif claude_code.auth_token != None %}
     "ANTHROPIC_AUTH_TOKEN": "{{ claude_code.auth_token }}",
     "ANTHROPIC_API_KEY": "",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"
-{% elif claude_code.api_key_helper and claude_code.base_url is defined and claude_code.model is defined %}
-    "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "21600000",
+{% endif %}
     "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
