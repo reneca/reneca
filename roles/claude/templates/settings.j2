@@ -1,4 +1,7 @@
 {
+{% if claude_code.api_key_helper %}
+  "apiKeyHelper": "~/.claude/api-key-gen.sh",
+{% endif %}
   "env": {
 {% if lmstudio.host is defined or ollama.host is defined %}
     "API_TIMEOUT_MS": "3600000",
@@ -10,6 +13,12 @@
     "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
     "ANTHROPIC_AUTH_TOKEN": "{{ claude_code.auth_token }}",
     "ANTHROPIC_API_KEY": "",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"
+{% elif claude_code.api_key_helper and claude_code.base_url is defined and claude_code.model is defined %}
+    "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "21600000",
+    "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"

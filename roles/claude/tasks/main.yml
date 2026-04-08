@@ -10,14 +10,22 @@
     executable: /bin/bash
   when: not claude_installed.stat.exists
 
+- name: Check if Claude need an API Key helper to generate an API Key
+  ansible.builtin.stat:
+    path: ~/.claude/api-key-gen.sh
+  register: api_key_gen_stat
+
 - name: Define Claude Code settings facts
   ansible.builtin.set_fact:
     claude_code:
+      api_key_helper: "{{ api_key_gen_stat.stat.exists and api_key_gen_stat.stat.executable }}"
       base_url: >-
-        {% if lmstudio.host is defined -%}
-          {{- lmstudio.host -}}
+        {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+          {{ lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL') }}
+        {%- elif lmstudio.host is defined -%}
+          {{ lmstudio.host }}
         {%- elif ollama.host is defined -%}
-          {{- ollama.host -}}
+          {{ ollama.host }}
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           https://openrouter.ai/api
         {%- else -%}
@@ -50,12 +58,12 @@
 
 - name: Claude Code settings
   template:
-    mode: '0644'
+    mode: "0640"
     src: "templates/settings.j2"
     dest: "~/.claude/settings.json"
 
 - name: Claude Code Status Line script
   template:
-    mode: '0755'
+    mode: "0750"
     src: "templates/statusline.j2"
     dest: "~/.claude/statusline.py"
