@@ -1,5 +1,5 @@
 {
-{% if claude_code.api_key_helper %}
+{% if claude_code.api_key_helper and claude_code.base_url != None and claude_code.base_url != '' %}
   "apiKeyHelper": "~/.claude/api-key-gen.sh",
 {% endif %}
   "env": {
@@ -9,7 +9,7 @@
 {% endif %}
     "DISABLE_TELEMETRY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
-{% if claude_code.base_url != None %}
+{% if claude_code.base_url != None and claude_code.base_url != '' %}
 {% if claude_code.api_key_helper %}
     "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "21600000",
 {% elif claude_code.auth_token != None %}
