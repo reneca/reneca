@@ -27,6 +27,15 @@
   ansible.builtin.set_fact:
     has_gui: "{{ has_gui_check.stdout == 'true' }}"
 
+- name: Install Homebrew pre-requisite for MacOS
+  community.general.homebrew:
+    name: "{{ item }}"
+    state: present
+    update_homebrew: true
+  loop:
+    - font-hack-nerd-font
+  when: ansible_facts['os_family'] == "Darwin"
+
 - name: Check if Docker is installed
   ansible.builtin.command: which docker
   register: docker_installed
@@ -46,21 +55,13 @@
     container_runtime: "{{ ('docker' if docker_installed.rc == 0 else 'podman') | trim }}"
   when: docker_installed.rc == 0 or podman_installed.rc == 0
 
-- name: Define ZSH_THEME
-  ansible.builtin.lineinfile:
-    path: "~/.zshrc"
-    regexp: "^ZSH_THEME="
-    line: 'ZSH_THEME="gentoo"'
-    create: no
-    state: present
-  ignore_errors: true
-
-- name: Enable bash PATH for ZSH
-  replace:
-    path: "~/.zshrc"
-    regexp: '^#\s*(export PATH=.*)'
-    replace: '\1'
-  ignore_errors: true
+- name: Check if Oh My Zsh is install
+  ansible.builtin.stat:
+    path: ~/.oh-my-zsh
+  register: ohmyzsh_installed
+- name: Configure Oh My Zsh
+  include_tasks: zsh.yml
+  when: ohmyzsh_installed.stat.exists
 
 - name: Define terminal aliases
   template:

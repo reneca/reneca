@@ -1,0 +1,17 @@
+---
+- name: Define ZSH_THEME
+  ansible.builtin.lineinfile:
+    path: "~/.zshrc"
+    regexp: "^ZSH_THEME="
+    line: 'ZSH_THEME="gentoo"'
+    create: no
+    state: present
+  ignore_errors: true
+
+- name: Enable bash PATH for ZSH
+  replace:
+    path: "~/.zshrc"
+    regexp: '^#\s*(export PATH=.*)'
+    replace: '\1'
+  ignore_errors: true
+...
