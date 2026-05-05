@@ -10,10 +10,8 @@ zed:
       show: "never"
     collaboration_panel:
       button: false
-    notification_panel:
-      button: false
     title_bar:
-      show_branch_icon: true
+      show_branch_status_icon: true
       show_sign_in: false
     file_types: {}
     base_keymap: "VSCode"
@@ -28,7 +26,18 @@ zed:
       enabled: true
       coloring: "indent_aware"
     project_panel:
+      button: true
+      dock: "left"
+      file_icons: true
+      folder_icons: true
+      git_status: true
       indent_size: 16
+    git_panel:
+      button: true
+      dock: "left"
+    outline_panel:
+      button: true
+      dock: "right"
     terminal:
       dock: "right"
       default_width: 640
