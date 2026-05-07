@@ -3,6 +3,9 @@
 # ansible-pull -U https://github.com/reneca/reneca.git dev.yml
 # For testing
 # ansible-playbook -c local -i localhost, dev.yml
+#
+# Next steps:
+# - Change terminal font to [Nerd Font](https://www.nerdfonts.com/)
 - name: Playbook for personnal development
   hosts: localhost
   roles:

@@ -1,0 +1,80 @@
+{% if ansible_facts['os_family'] == "Darwin" %}
+OS_LOGO=""
+{% elif "microsoft" in ansible_facts['kernel'] %}
+OS_LOGO=""
+{% elif (ansible_facts['distribution'] == 'Debian' and 'rpi' in ansible_facts['kernel']) or (ansible_facts['distribution'] == 'Ubuntu' and 'raspi' in ansible_facts['kernel']) %}
+OS_LOGO=""
+{% else %}
+OS_LOGO=""
+{% endif %}
+{% if ansible_facts['memtotal_mb'] > 40000 %}
+OS_FG_COLOR="%F{252}"
+OS_BG_COLOR="%K{252}"
+{% else %}
+OS_FG_COLOR="%F{255}"
+OS_BG_COLOR="%K{255}"
+{% endif %}
+{% raw %}
+# Powerline segment separator
+SEGMENT_SEPARATOR=$'\ue0b0'
+
+autoload -Uz colors && colors
+
+autoload -Uz vcs_info
+zstyle ':vcs_info:*' check-for-changes true
+zstyle ':vcs_info:*' unstagedstr '%F{red}*'   # display this when there are unstaged changes
+zstyle ':vcs_info:*' stagedstr '%F{green}+'  # display this when there are staged changes
+zstyle ':vcs_info:*' actionformats '%F{black}%b%F{green}|%F{red}%a%c%u%m%f '
+zstyle ':vcs_info:*' formats '%F{black}%b%c%u%m%f '
+zstyle ':vcs_info:*' enable git
+zstyle ':vcs_info:git*+set-message:*' hooks untracked-git
+
++vi-untracked-git() {
+  if command git status --porcelain 2>/dev/null | command grep -q '??'; then
+    hook_com[misc]='%F{red}?'
+  else
+    hook_com[misc]=''
+  fi
+}
+
+reneca_precmd() {
+  vcs_info
+}
+
+autoload -U add-zsh-hook
+add-zsh-hook precmd reneca_precmd
+
+prompt_host() {
+  echo -n "${OS_BG_COLOR}%(!.%F{red}.%F{black})${OS_LOGO} %m ${OS_FG_COLOR}"
+}
+
+prompt_dir() {
+  if [[ "$PWD" == "$HOME" ]]; then
+    return
+  fi
+  echo -n "%K{21}${SEGMENT_SEPARATOR}%F{white}   %~ %F{21}"
+}
+
+prompt_git() {
+  (( $+commands[git] )) || return
+  [[ "$(command git rev-parse --is-inside-work-tree 2>/dev/null)" != "true" ]] && return
+
+  if [[ -n "${vcs_info_msg_0_}" ]]; then
+    echo -n "%K{220}${SEGMENT_SEPARATOR}%F{black}  ${vcs_info_msg_0_}%F{220}"
+  fi
+}
+
+prompt_symbol() {
+  echo -n "%k${SEGMENT_SEPARATOR}%f"
+}
+
+build_prompt() {
+  RETVAL=$?
+  prompt_host
+  prompt_dir
+  prompt_git
+  prompt_symbol
+}
+
+PROMPT='%{%f%b%k%}$(build_prompt) '
+{% endraw %}
