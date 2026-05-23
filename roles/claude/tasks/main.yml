@@ -29,6 +29,10 @@
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           https://openrouter.ai/api
         {%- endif %}
+      vertex_base_url: >-
+        {% if lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL', default='') != '' -%}
+          {{ lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL') }}
+        {%- endif %}
       auth_token: >-
         {% if lmstudio.host is defined -%}
           lmstudio
@@ -63,3 +67,8 @@
     mode: "0750"
     src: "templates/statusline.j2"
     dest: "~/.claude/statusline.py"
+
+- name: Personnal CLAUDE.md
+  ansible.builtin.copy:
+    src: CLAUDE.md
+    dest: ~/.claude/CLAUDE.md

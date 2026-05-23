@@ -68,8 +68,8 @@
           }
         - {
             name: "Claude Code",
-            value: "{{ {'base_url': claude_code.base_url | default(omit), 'model': claude_code.model | default(omit)} }}",
-            when: "{{ claude_code is defined and claude_code.base_url is defined and claude_code.model is defined }}",
+            value: "{{ {'base_url': claude_code.base_url | default(omit), 'vertex_base_url': claude_code.vertex_base_url | default(omit), 'model': claude_code.model | default(omit)} }}",
+            when: "{{ claude_code is defined and claude_code.base_url is defined and claude_code.vertex_base_url is defined and claude_code.model is defined }}",
           }
       loop_control:
         label: "{{ item.name }}"

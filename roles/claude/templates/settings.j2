@@ -8,6 +8,7 @@
     "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
 {% endif %}
     "DISABLE_TELEMETRY": "1",
+    "ENABLE_TOOL_SEARCH": "true",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 {% if claude_code.base_url != None and claude_code.base_url != '' %}
 {% if claude_code.api_key_helper %}
@@ -21,8 +22,13 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"
 {% elif gcloud.core.project is defined %}
+{% if vertex_base_url != None and vertex_base_url != "" %}
+    "ANTHROPIC_VERTEX_BASE_URL": "{{ vertex_base_url }}",
+    "CLAUDE_CODE_SKIP_VERTEX_AUTH": "1",
+{% endif %}
     "CLAUDE_CODE_USE_VERTEX": "1",
     "CLOUD_ML_REGION": "europe-west1",
+    "VERTEX_REGION_CLAUDE_4_7_OPUS": "eu",
     "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}",
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",

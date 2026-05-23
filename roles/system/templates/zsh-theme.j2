@@ -1,7 +1,7 @@
 {% if ansible_facts['os_family'] == "Darwin" %}
 OS_LOGO=""
 {% elif "microsoft" in ansible_facts['kernel'] %}
-OS_LOGO=""
+OS_LOGO=""
 {% elif (ansible_facts['distribution'] == 'Debian' and 'rpi' in ansible_facts['kernel']) or (ansible_facts['distribution'] == 'Ubuntu' and 'raspi' in ansible_facts['kernel']) %}
 OS_LOGO=""
 {% else %}
