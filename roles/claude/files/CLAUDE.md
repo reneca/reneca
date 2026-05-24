@@ -26,6 +26,7 @@ No need to explain low-level concepts (memory, concurrency, ownership, lifetimes
 
 - Be terse. No filler, no trailing summaries, no restating what was just done
 - Don't add features, comments, abstractions, or error handling beyond what was asked
-- Don't refactor surrounding code that wasn't part of the request
+- Only touch code directly related to the request — leave working code as-is
+- No reformatting, renaming, or reorganizing outside the edited scope
 - For destructive or irreversible actions, always confirm before proceeding
 - Trust internal code and framework guarantees — only validate at boundaries
