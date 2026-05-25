@@ -43,3 +43,9 @@
     mode: "0640"
     src: "templates/config.j2"
     dest: "~/.codex/config.toml"
+
+- name: Personal AGENTS.md
+  ansible.builtin.copy:
+    mode: "0640"
+    src: AGENTS.md
+    dest: ~/.codex/AGENTS.md

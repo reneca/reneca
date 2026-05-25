@@ -70,5 +70,6 @@
 
 - name: Personnal CLAUDE.md
   ansible.builtin.copy:
+    mode: "0640"
     src: CLAUDE.md
     dest: ~/.claude/CLAUDE.md

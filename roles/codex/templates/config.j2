@@ -25,3 +25,7 @@ name = "OpenAI custom"
 base_url="{{ lookup('ansible.builtin.env', 'OPENAI_BASE_URL') }}/v1"
 env_key="OPENAI_API_KEY"
 {% endif %}
+
+[tui]
+status_line = ["model-with-reasoning", "context-window-size", "current-dir", "context-used", "used-tokens"]
+status_line_use_colors = true
