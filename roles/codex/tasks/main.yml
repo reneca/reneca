@@ -1,0 +1,45 @@
+---
+- name: Check if Codex CLI is already install
+  ansible.builtin.stat:
+    path: ~/.local/bin/codex
+  register: codex_installed
+- name: Install Codex CLI
+  ansible.builtin.shell: |
+    curl -fsSL https://chatgpt.com/codex/install.sh | sh
+  args:
+    executable: /bin/sh
+  when: not codex_installed.stat.exists
+
+- name: Define Codex settings facts
+  ansible.builtin.set_fact:
+    codex:
+      provider: >-
+        {% if lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') != '' -%}
+          openai-custom
+        {%- elif lmstudio.host is defined -%}
+          lmstudio-custom
+        {%- elif ollama.host is defined -%}
+          ollama-custom
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          openrouter
+        {%- endif %}
+      model: >-
+        {% if lmstudio.host is defined -%}
+          openai/gpt-oss-20b
+        {%- elif ollama.host is defined -%}
+          {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
+            gpt-oss:120b
+          {%- else -%}
+            gpt-oss:20b
+          {%- endif -%}
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          ~openai/gpt-latest
+        {%- else -%}
+          gpt-5.5
+        {%- endif -%}
+
+- name: Codex settings
+  template:
+    mode: "0640"
+    src: "templates/config.j2"
+    dest: "~/.codex/config.toml"

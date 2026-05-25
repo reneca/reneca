@@ -36,6 +36,14 @@
         or gcloud.core.project is defined
         or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
 
+    # Install and configure Codex only if it can be use
+    - role: codex
+      when: >
+        lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') != ''
+        or (lmstudio is defined and lmstudio.host is defined)
+        or ollama.host is defined
+        or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
+
   tasks:
     - name: Playbook facts
       ansible.builtin.debug:
@@ -70,6 +78,11 @@
             name: "Claude Code",
             value: "{{ {'base_url': claude_code.base_url | default(omit), 'vertex_base_url': claude_code.vertex_base_url | default(omit), 'model': claude_code.model | default(omit)} }}",
             when: "{{ claude_code is defined and claude_code.base_url is defined and claude_code.vertex_base_url is defined and claude_code.model is defined }}",
+          }
+        - {
+            name: "Codex",
+            value: "{{ {'provider': codex.provider | default(omit), 'model': codex.model | default(omit)} }}",
+            when: "{{ codex is defined and codex.provider is defined and codex.model is defined }}",
           }
       loop_control:
         label: "{{ item.name }}"
