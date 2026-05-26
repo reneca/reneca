@@ -68,4 +68,10 @@
     mode: "0644"
     src: "templates/aliases.j2"
     dest: "~/.aliases"
+- name: Source aliases for Zsh
+  ansible.builtin.lineinfile:
+    path: ~/.zshrc
+    line: 'source "$HOME/.aliases"'
+    state: present
+  when: ohmyzsh_installed.stat.exists
 ...

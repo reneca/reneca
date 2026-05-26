@@ -20,7 +20,11 @@ alias tf="terraform"
 {% endif %}
 {% if container_runtime is defined %}
 alias d="{{ container_runtime }}"
+{% if container_runtime == 'docker' %}
+alias di="{{ container_runtime }} images {% raw %}--format \"table {{.Repository}}:{{.Tag}}\t{{.ID}}\t{{.CreatedSince}}\t{{.Size}}\"{% endraw %}"
+{% else %}
 alias di="{{ container_runtime }} images"
+{% endif %}
 alias dc="{{ container_runtime }} compose"
 alias hugo="{{ container_runtime }} run --rm -it -v \$(pwd):/src -p 1313:1313 klakegg/hugo"
 {% endif %}
