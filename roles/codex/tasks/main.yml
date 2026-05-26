@@ -1,14 +1,17 @@
 ---
 - name: Check if Codex CLI is already install
   ansible.builtin.stat:
-    path: ~/.local/bin/codex
+    path: "{{ item }}"
+  loop:
+    - ~/.local/bin/codex
+    - /usr/local/bin/codex
   register: codex_installed
 - name: Install Codex CLI
   ansible.builtin.shell: |
     curl -fsSL https://chatgpt.com/codex/install.sh | sh
   args:
     executable: /bin/sh
-  when: not codex_installed.stat.exists
+  when: not (codex_installed.results | map(attribute='stat.exists') | select | list)
 
 - name: Define Codex settings facts
   ansible.builtin.set_fact:
