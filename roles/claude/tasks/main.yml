@@ -51,9 +51,9 @@
             qwen3-coder
           {%- endif -%}
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
-          qwen/qwen3.6-plus:free
+          ~anthropic/claude-sonnet-latest
         {%- else -%}
-          claude-opus-4-6
+          claude-opus-4-8
         {%- endif -%}
 
 - name: Claude Code settings

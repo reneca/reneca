@@ -18,9 +18,15 @@
     "ANTHROPIC_API_KEY": "",
 {% endif %}
     "ANTHROPIC_BASE_URL": "{{ claude_code.base_url }}",
+{% if lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' %}
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "~anthropic/claude-opus-latest",
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": "~anthropic/claude-sonnet-latest",
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "~anthropic/claude-haiku-latest"
+{% else %}
     "ANTHROPIC_DEFAULT_OPUS_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "{{ claude_code.model }}",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "{{ claude_code.model }}"
+{% endif %}
 {% elif gcloud.core.project is defined %}
 {% if vertex_base_url != None and vertex_base_url != "" %}
     "ANTHROPIC_VERTEX_BASE_URL": "{{ vertex_base_url }}",
@@ -30,7 +36,7 @@
     "CLOUD_ML_REGION": "europe-west1",
     "VERTEX_REGION_CLAUDE_4_7_OPUS": "eu",
     "ANTHROPIC_VERTEX_PROJECT_ID": "{{ gcloud.core.project }}",
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-6",
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
     "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5"
 {% endif %}
