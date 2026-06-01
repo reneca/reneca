@@ -1,6 +1,11 @@
 model_provider = "{{ codex.provider }}"
 model_reasoning_effort = "high"
 model="{{ codex.model }}"
+sandbox_mode = "workspace-write"
+approval_policy = "on-request"
+
+[analytics]
+enabled = false
 
 {% if ollama.host is defined %}
 [model_providers.ollama-custom]
