@@ -1,19 +1,26 @@
 model_provider = "{{ codex.provider }}"
 model_reasoning_effort = "high"
 model="{{ codex.model }}"
+personality="pragmatic"
 sandbox_mode = "workspace-write"
 approval_policy = "on-request"
+web_search = "live"
+{% if ollama.host is defined %}
+oss_provider="ollama"
+{% elif lmstudio.host is defined %}
+oss_provider="lmstudio"
+{% endif %}
 
 [analytics]
 enabled = false
 
-{% if ollama.host is defined %}
+{% if ollama.host is defined -%}
 [model_providers.ollama-custom]
 name = "Ollama"
 base_url = "{{ ollama.host }}/v1"
 {% endif %}
 
-{% if lmstudio.host is defined %}
+{% if lmstudio.host is defined -%}
 [model_providers.lmstudio-custom]
 name = "LM Studio"
 base_url = "{{ lmstudio.host }}/v1"
