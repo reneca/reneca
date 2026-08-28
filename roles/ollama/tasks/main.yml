@@ -3,7 +3,7 @@
   ansible.builtin.command:
     argv:
       - which
-      - ollama
+      - "{{ ollama_command }}"
   register: ollama_installed
   changed_when: false
   failed_when: false
@@ -20,7 +20,7 @@
     - ollama_installed.rc == 0
     - ollama_installed.stdout != ""
 
-- name: Store installed Ollama version
+- name: Store installed Ollama version  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     ollama: >-
       {{
@@ -35,18 +35,21 @@
 - name: Define Ollama endpoint candidate
   ansible.builtin.set_fact:
     ollama_candidate_host: >-
-      {% if lookup('ansible.builtin.env', 'OLLAMA_HOST', default='') != '' -%}
-        {{ lookup('ansible.builtin.env', 'OLLAMA_HOST') | regex_replace('/+$', '') }}
-      {%- elif ollama_installed.rc == 0 -%}
-        http://localhost:11434
-      {%- endif %}
+      {{
+        (
+          lookup('ansible.builtin.env', 'OLLAMA_HOST', default='')
+          if lookup('ansible.builtin.env', 'OLLAMA_HOST', default='') != ''
+          else ('http://localhost:11434' if ollama_installed.rc == 0 else '')
+        )
+        | regex_replace('/+$', '')
+      }}
 
 - name: Validate configured Ollama endpoint
   ansible.builtin.assert:
     that:
       - ollama_candidate_host is match('^https?://')
     fail_msg: OLLAMA_HOST must be an HTTP or HTTPS URL.
-  when: ollama_candidate_host != ''
+  when: (ollama_candidate_host | default('', true)) != ''
 
 - name: Retrieve Ollama models from API
   ansible.builtin.uri:
@@ -60,9 +63,9 @@
       ollama_tags.status | default(-1) != 200
       or 'models' not in (ollama_tags.json | default({}))
     )
-  when: ollama_candidate_host != ''
+  when: (ollama_candidate_host | default('', true)) != ''
 
-- name: Store reachable Ollama endpoint and models
+- name: Store reachable Ollama endpoint and models  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     ollama: >-
       {{
@@ -72,7 +75,7 @@
         })
       }}
   when:
-    - ollama_candidate_host != ''
+    - (ollama_candidate_host | default('', true)) != ''
     - ollama_tags.status | default(-1) == 200
     - "'models' in (ollama_tags.json | default({}))"
 ...

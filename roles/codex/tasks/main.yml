@@ -42,9 +42,7 @@
         {%- endif %}
       openai_base_url: >-
         {% set base_url = lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') | regex_replace('/+$', '') -%}
-        {% if base_url != '' -%}
-          {{ base_url if base_url.endswith('/v1') else base_url + '/v1' }}
-        {%- endif %}
+        {{ base_url if base_url == '' or base_url.endswith('/v1') else base_url + '/v1' }}
       openrouter_enabled: >-
         {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}
 

@@ -1,0 +1,20 @@
+---
+- name: Test Ollama endpoint discovery
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    OLLAMA_HOST: ""
+  tasks:
+    - name: Apply Ollama role without an installation  # noqa: role-name[path]
+      ansible.builtin.include_role:
+        name: ../roles/ollama
+      vars:
+        ollama_command: reneca-test-missing-ollama
+
+    - name: Verify an absent Ollama endpoint is ignored
+      ansible.builtin.assert:
+        that:
+          - (ollama_candidate_host | default('', true)) == ''
+          - ollama.host is not defined
+...

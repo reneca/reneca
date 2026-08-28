@@ -19,7 +19,7 @@
     state: directory
     mode: "0700"
 
-- name: Check for a user-provided Claude API key helper
+- name: Check for a user-provided Claude API key helper  # noqa: var-naming[no-role-prefix]
   ansible.builtin.stat:
     path: "{{ ansible_facts['env']['HOME'] }}/.claude/api-key-gen.sh"
   register: api_key_gen_stat

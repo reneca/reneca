@@ -1,4 +1,4 @@
 ---
-ollama: {
-  models: [],
-}
+ollama:  # noqa: var-naming[no-role-prefix]
+  models: []
+ollama_command: ollama

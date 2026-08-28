@@ -3,10 +3,19 @@
   ansible.builtin.command:
     argv:
       - which
-      - lms
+      - "{{ lmstudio_command }}"
   register: lmstudio_installed
   changed_when: false
   failed_when: false
+
+- name: Define configured LM Studio endpoint
+  ansible.builtin.set_fact:
+    lmstudio_configured_host: >-
+      {{
+        lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='')
+        | default('', true)
+        | regex_replace('/+$', '')
+      }}
 
 - name: Get LM Studio version
   ansible.builtin.command:
@@ -33,7 +42,7 @@
   when:
     - lmstudio_installed.rc == 0
     - lmstudio_installed.stdout != ""
-    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') == ''
+    - lmstudio_configured_host == ''
 
 - name: Parse LM Studio server info
   ansible.builtin.set_fact:
@@ -42,7 +51,7 @@
     - lmstudio_status_result.rc | default(1) == 0
     - lmstudio_status_result.stdout | default('') != ''
 
-- name: Store local LM Studio facts
+- name: Store local LM Studio facts  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     lmstudio: >-
       {{
@@ -64,12 +73,12 @@
     - lmstudio_version.stdout | default('') != ''
     - lmstudio_status is defined
 
-- name: Define remote LM Studio facts
+- name: Define remote LM Studio facts  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     lmstudio:
       running: true
-      host: "{{ lookup('ansible.builtin.env', 'LMSTUDIO_HOST') | regex_replace('/+$', '') }}"
-  when: lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') != ''
+      host: "{{ lmstudio_configured_host }}"
+  when: lmstudio_configured_host != ''
 
 - name: Validate configured LM Studio endpoint
   ansible.builtin.assert:
@@ -77,6 +86,6 @@
       - lmstudio.host is match('^https?://')
     fail_msg: LMSTUDIO_HOST must be an HTTP or HTTPS URL.
   when:
-    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') != ''
+    - lmstudio_configured_host != ''
     - lmstudio.host is defined
 ...

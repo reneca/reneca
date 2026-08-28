@@ -1,0 +1,20 @@
+---
+- name: Test LM Studio endpoint discovery
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  environment:
+    LMSTUDIO_HOST: ""
+  tasks:
+    - name: Apply LM Studio role without an installation  # noqa: role-name[path]
+      ansible.builtin.include_role:
+        name: ../roles/lmstudio
+      vars:
+        lmstudio_command: reneca-test-missing-lmstudio
+
+    - name: Verify an absent LM Studio endpoint is ignored
+      ansible.builtin.assert:
+        that:
+          - lmstudio_configured_host == ''
+          - lmstudio is not defined
+...
