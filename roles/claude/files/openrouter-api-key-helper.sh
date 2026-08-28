@@ -1,0 +1,8 @@
+#!/bin/sh
+
+if [ -z "${OPENROUTER_API_KEY:-}" ]; then
+  echo "OPENROUTER_API_KEY is not set" >&2
+  exit 1
+fi
+
+printf '%s' "$OPENROUTER_API_KEY"

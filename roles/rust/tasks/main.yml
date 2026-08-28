@@ -1,31 +1,36 @@
 ---
-- name: Check if rust is already install
-  command: which rustup
+- name: Check if Rust is already installed
+  ansible.builtin.stat:
+    path: "{{ ansible_facts['env']['HOME'] }}/.cargo/bin/rustup"
   register: rust_installed
-  ignore_errors: true
-  changed_when: false
 
 - name: Install Rust
-  shell: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y -q
   args:
     executable: /bin/bash
-  when: rust_installed.rc != 0
+  changed_when: true
+  when: not rust_installed.stat.exists
 
 - name: Get Rust version
-  ansible.builtin.shell: >
-    rustc -V | cut -d' ' -f2
+  ansible.builtin.command:
+    argv:
+      - "{{ ansible_facts['env']['HOME'] }}/.cargo/bin/rustc"
+      - --version
   register: rust_version
   changed_when: false
 
 - name: Set Rust facts
   ansible.builtin.set_fact:
     rust:
-      version: "{{ rust_version.stdout }}"
+      version: "{{ rust_version.stdout.split()[1] }}"
 
 - name: Install Rust packages
   community.general.cargo:
     name: "{{ item }}"
     state: latest
+    executable: "{{ ansible_facts['env']['HOME'] }}/.cargo/bin/cargo"
   loop:
     - just
     - cargo-prosa

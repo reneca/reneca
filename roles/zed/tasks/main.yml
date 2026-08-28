@@ -1,46 +1,65 @@
 ---
-- name: Check if zed is already install
-  command: which zed
+- name: Check if Zed is already installed
+  ansible.builtin.command:
+    argv:
+      - which
+      - zed
   register: zed_installed
-  ignore_errors: true
   changed_when: false
+  failed_when: false
 
 - name: Install Zed
-  shell: curl -f https://zed.dev/install.sh | sh
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -fsSL https://zed.dev/install.sh | sh
   args:
     executable: /bin/bash
+  changed_when: true
   when:
     - zed_installed.rc != 0
     - ansible_facts['os_family'] != "Darwin"
     - '"microsoft" not in ansible_facts["kernel"]'
 
-- name: Install Zed vith Homebrew (macOS)
+- name: Install Zed with Homebrew (macOS)
   community.general.homebrew_cask:
     name: zed
-    state: latest
+    state: present
   when:
     - zed_installed.rc != 0
     - ansible_facts['os_family'] == "Darwin"
 
+- name: Find Zed after installation
+  ansible.builtin.command:
+    argv:
+      - which
+      - zed
+  register: zed_executable
+  changed_when: false
+  failed_when: false
+
 - name: Get Zed version
-  ansible.builtin.shell: >
-    zed -v | cut -d' ' -f2
+  ansible.builtin.command:
+    argv:
+      - "{{ zed_executable.stdout }}"
+      - -v
   register: zed_version
   changed_when: false
-  when: zed_installed.rc == 0 or ansible_facts['os_family'] == "Darwin" or "microsoft" not in ansible_facts["kernel"]
+  when:
+    - zed_executable.rc == 0
+    - zed_executable.stdout != ""
 
 - name: Set Zed facts
   ansible.builtin.set_fact:
     zed: >-
       {{
         zed | combine({
-          'version': zed_version.stdout,
+          'version': zed_version.stdout.split() | last,
           'config_dir': lookup('env', 'XDG_CONFIG_HOME') | default(ansible_facts['env'].HOME + '/.config', true) + '/zed'
         })
       }}
   when:
-    - zed_installed.rc == 0 or ansible_facts['os_family'] == "Darwin" or "microsoft" not in ansible_facts["kernel"]
-    - zed_version.rc == 0
+    - zed_version.rc | default(1) == 0
+    - zed_version.stdout | default('') != ''
 
 - name: Add LMStudio or Ollama agent provider
   ansible.builtin.set_fact:

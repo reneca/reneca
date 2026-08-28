@@ -1,24 +1,49 @@
 ---
-- name: Check if Claude Code is already install
+- name: Check if Claude Code is already installed
   ansible.builtin.stat:
-    path: ~/.local/bin/claude
+    path: "{{ ansible_facts['env']['HOME'] }}/.local/bin/claude"
   register: claude_installed
+
 - name: Install Claude Code
   ansible.builtin.shell: |
+    set -o pipefail
     curl -fsSL https://claude.ai/install.sh | bash
   args:
     executable: /bin/bash
+  changed_when: true
   when: not claude_installed.stat.exists
 
-- name: Check if Claude need an API Key helper to generate an API Key
+- name: Ensure Claude configuration folder exists
+  ansible.builtin.file:
+    path: "{{ ansible_facts['env']['HOME'] }}/.claude"
+    state: directory
+    mode: "0700"
+
+- name: Check for a user-provided Claude API key helper
   ansible.builtin.stat:
-    path: ~/.claude/api-key-gen.sh
+    path: "{{ ansible_facts['env']['HOME'] }}/.claude/api-key-gen.sh"
   register: api_key_gen_stat
+
+- name: Install OpenRouter API key helper
+  ansible.builtin.copy:
+    src: openrouter-api-key-helper.sh
+    dest: "{{ ansible_facts['env']['HOME'] }}/.claude/openrouter-api-key-helper.sh"
+    mode: "0700"
+  when:
+    - lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
+    - not (api_key_gen_stat.stat.exists and api_key_gen_stat.stat.executable)
 
 - name: Define Claude Code settings facts
   ansible.builtin.set_fact:
     claude_code:
-      api_key_helper: "{{ api_key_gen_stat.stat.exists and api_key_gen_stat.stat.executable }}"
+      api_key_helper: >-
+        {% if api_key_gen_stat.stat.exists and api_key_gen_stat.stat.executable -%}
+          ~/.claude/api-key-gen.sh
+        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
+          ~/.claude/openrouter-api-key-helper.sh
+        {%- else -%}
+          {{ '' }}
+        {%- endif %}
       base_url: >-
         {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
           {{ lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL') }}
@@ -28,21 +53,29 @@
           {{ ollama.host }}
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           https://openrouter.ai/api
+        {%- else -%}
+          {{ '' }}
         {%- endif %}
       vertex_base_url: >-
-        {% if lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL', default='') != '' -%}
-          {{ lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL') }}
-        {%- endif %}
+        {{
+          lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL', default='')
+          | default('', true)
+        }}
+      openrouter_enabled: >-
+        {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}
       auth_token: >-
-        {% if lmstudio.host is defined -%}
+        {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+        {%- elif lmstudio.host is defined -%}
           lmstudio
         {%- elif ollama.host is defined -%}
           ollama
-        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
-          {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY') }}
+        {%- else -%}
+          {{ '' }}
         {%- endif %}
       model: >-
-        {% if lmstudio.host is defined -%}
+        {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+          claude-opus-4-8
+        {%- elif lmstudio.host is defined -%}
           qwen/qwen3-coder-next
         {%- elif ollama.host is defined -%}
           {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
@@ -56,14 +89,26 @@
           claude-opus-4-8
         {%- endif -%}
 
+- name: Validate Claude API endpoints
+  ansible.builtin.assert:
+    that:
+      - >-
+        (claude_code.base_url | default('', true)) == ''
+        or claude_code.base_url is match('^https?://')
+      - >-
+        (claude_code.vertex_base_url | default('', true)) == ''
+        or claude_code.vertex_base_url is match('^https?://')
+    fail_msg: Claude API base URLs must use HTTP or HTTPS.
+
 - name: Claude Code settings
-  template:
-    mode: "0640"
+  ansible.builtin.template:
+    mode: "0600"
     src: "templates/settings.j2"
     dest: "~/.claude/settings.json"
+    validate: "{{ ansible_playbook_python }} -m json.tool %s"
 
 - name: Claude Code Status Line script
-  template:
+  ansible.builtin.template:
     mode: "0750"
     src: "templates/statusline.j2"
     dest: "~/.claude/statusline.py"

@@ -36,13 +36,8 @@
         or gcloud.core.project is defined
         or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
 
-    # Install and configure Codex only if it can be use
+    # Install and configure Codex
     - role: codex
-      when: >
-        lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') != ''
-        or (lmstudio is defined and lmstudio.host is defined)
-        or ollama.host is defined
-        or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
 
   tasks:
     - name: Playbook facts
@@ -58,6 +53,11 @@
             name: "Rust",
             value: "{{ {'version': rust.version} }}",
             when: "{{ rust.version is defined }}",
+          }
+        - {
+            name: "VS Code",
+            value: "{{ vscode }}",
+            when: "{{ vscode is defined and vscode.version is defined }}",
           }
         - {
             name: "GCloud",
@@ -81,8 +81,8 @@
           }
         - {
             name: "Codex",
-            value: "{{ {'provider': codex.provider | default(omit), 'model': codex.model | default(omit)} }}",
-            when: "{{ codex is defined and codex.provider is defined and codex.model is defined }}",
+            value: "{{ {'provider': codex.provider | default(omit), 'model': codex.model | default(omit), 'oss_provider': codex.oss_provider | default(omit), 'oss_model': codex.oss_model | default(omit)} }}",
+            when: "{{ codex is defined }}",
           }
       loop_control:
         label: "{{ item.name }}"

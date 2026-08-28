@@ -1,61 +1,82 @@
 ---
-- name: Check if lmstudio is installed
-  ansible.builtin.command: which lms
+- name: Check if LM Studio is installed
+  ansible.builtin.command:
+    argv:
+      - which
+      - lms
   register: lmstudio_installed
-  ignore_errors: true
   changed_when: false
   failed_when: false
 
-- name: Get lmstudio version
-  ansible.builtin.shell: >
-    {{ lmstudio_installed.stdout }} -v | awk '{print $NF}'
+- name: Get LM Studio version
+  ansible.builtin.command:
+    argv:
+      - "{{ lmstudio_installed.stdout }}"
+      - -v
   register: lmstudio_version
-  ignore_errors: true
   changed_when: false
+  failed_when: false
   when:
     - lmstudio_installed.rc == 0
     - lmstudio_installed.stdout != ""
 
-- name: Retrieve LMS server info
-  ansible.builtin.command: "{{ lmstudio_installed.stdout }} server status --json"
-  register: lms_status
-  ignore_errors: true
+- name: Retrieve LM Studio server info
+  ansible.builtin.command:
+    argv:
+      - "{{ lmstudio_installed.stdout }}"
+      - server
+      - status
+      - --json
+  register: lmstudio_status_result
   changed_when: false
+  failed_when: false
   when:
     - lmstudio_installed.rc == 0
     - lmstudio_installed.stdout != ""
+    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') == ''
 
-- name: Set lmstudio fact from local
+- name: Parse LM Studio server info
   ansible.builtin.set_fact:
-    lmstudio: >
+    lmstudio_status: "{{ lmstudio_status_result.stdout | from_json }}"
+  when:
+    - lmstudio_status_result.rc | default(1) == 0
+    - lmstudio_status_result.stdout | default('') != ''
+
+- name: Store local LM Studio facts
+  ansible.builtin.set_fact:
+    lmstudio: >-
       {{
         {
-          'version': lmstudio_version.stdout | trim,
-          'running': (lms_status.stdout | from_json).running | default(false)
+          'version': lmstudio_version.stdout.split() | last,
+          'running': lmstudio_status.running | default(false)
         }
         | combine(
           {
-            'host': 'http://localhost:' + ((lms_status.stdout | from_json).port | string)
+            'host': 'http://localhost:' + (lmstudio_status.port | string)
           }
-          if (lms_status.stdout | from_json).running | default(false)
-          and (lms_status.stdout | from_json).port is defined
+          if lmstudio_status.running | default(false)
+          and lmstudio_status.port is defined
           else {}
         )
       }}
   when:
-    - lmstudio_installed.rc == 0
-    - lmstudio_installed.stdout != ""
-    - lmstudio_version.rc == 0
-    - lmstudio_version.stdout != ""
-    - lms_status.rc == 0
-    - lms_status.stdout != ""
-    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST') == ""
+    - lmstudio_version.rc | default(1) == 0
+    - lmstudio_version.stdout | default('') != ''
+    - lmstudio_status is defined
 
-- name: Set lmstudio fact from remote
+- name: Define remote LM Studio facts
   ansible.builtin.set_fact:
     lmstudio:
       running: true
-      host: "{{ lookup('ansible.builtin.env', 'LMSTUDIO_HOST') }}"
+      host: "{{ lookup('ansible.builtin.env', 'LMSTUDIO_HOST') | regex_replace('/+$', '') }}"
+  when: lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') != ''
+
+- name: Validate configured LM Studio endpoint
+  ansible.builtin.assert:
+    that:
+      - lmstudio.host is match('^https?://')
+    fail_msg: LMSTUDIO_HOST must be an HTTP or HTTPS URL.
   when:
-    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST') != ""
+    - lookup('ansible.builtin.env', 'LMSTUDIO_HOST', default='') != ''
+    - lmstudio.host is defined
 ...

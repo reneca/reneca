@@ -1,54 +1,93 @@
 ---
-- name: Check if Codex CLI is already install
+- name: Check if Codex CLI is already installed
   ansible.builtin.stat:
     path: "{{ item }}"
   loop:
-    - ~/.local/bin/codex
+    - "{{ ansible_facts['env']['HOME'] }}/.local/bin/codex"
     - /usr/local/bin/codex
+    - /opt/homebrew/bin/codex
   register: codex_installed
+
 - name: Install Codex CLI
   ansible.builtin.shell: |
+    set -o pipefail
     curl -fsSL https://chatgpt.com/codex/install.sh | sh
   args:
-    executable: /bin/sh
+    executable: /bin/bash
+  changed_when: true
   when: not (codex_installed.results | map(attribute='stat.exists') | select | list)
 
-- name: Define Codex settings facts
+- name: Define Codex settings facts  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
     codex:
       provider: >-
         {% if lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') != '' -%}
-          openai-custom
-        {%- elif lmstudio.host is defined -%}
-          lmstudio-custom
-        {%- elif ollama.host is defined -%}
-          ollama-custom
+          openai
         {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
           openrouter
-        {%- endif %}
-      model: >-
-        {% if lmstudio.host is defined -%}
-          openai/gpt-oss-20b
-        {%- elif ollama.host is defined -%}
-          {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
-            gpt-oss:120b
-          {%- else -%}
-            gpt-oss:20b
-          {%- endif -%}
-        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
-          ~openai/gpt-latest
         {%- else -%}
-          gpt-5.5
-        {%- endif -%}
+          openai
+        {%- endif %}
+      oss_provider: >-
+        {% if ollama is defined and ollama.host is defined -%}
+          ollama
+        {%- elif lmstudio is defined and lmstudio.host is defined -%}
+          lmstudio
+        {%- endif %}
+      oss_model: >-
+        {% if ollama is defined and ollama.host is defined -%}
+          {{ 'gpt-oss:120b' if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 else 'gpt-oss:20b' }}
+        {%- elif lmstudio is defined and lmstudio.host is defined -%}
+          openai/gpt-oss-20b
+        {%- endif %}
+      openai_base_url: >-
+        {% set base_url = lookup('ansible.builtin.env', 'OPENAI_BASE_URL', default='') | regex_replace('/+$', '') -%}
+        {% if base_url != '' -%}
+          {{ base_url if base_url.endswith('/v1') else base_url + '/v1' }}
+        {%- endif %}
+      openrouter_enabled: >-
+        {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}
 
-- name: Codex settings
-  template:
-    mode: "0640"
-    src: "templates/config.j2"
-    dest: "~/.codex/config.toml"
+- name: Define persistent Codex model  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    codex: >-
+      {{
+        codex | combine({
+          'model': (
+            'gpt-5.6-sol'
+            if (codex.openai_base_url | default('', true)) != ''
+            else (
+              '~openai/gpt-latest'
+              if codex.openrouter_enabled | bool
+              else 'gpt-5.6-sol'
+            )
+          )
+        })
+      }}
+
+- name: Validate custom OpenAI base URL
+  ansible.builtin.assert:
+    that:
+      - codex.openai_base_url is match('^https?://')
+    fail_msg: OPENAI_BASE_URL must be an HTTP or HTTPS URL.
+  when: (codex.openai_base_url | default('', true)) != ''
+
+- name: Ensure Codex configuration folder exists
+  ansible.builtin.file:
+    path: "{{ codex_home }}"
+    state: directory
+    mode: "0700"
+
+- name: Update Codex settings without replacing user state
+  ansible.builtin.include_tasks: config.yml
+  when: not ansible_check_mode
+
+- name: Update Codex OSS alias
+  ansible.builtin.include_tasks: alias.yml
 
 - name: Personal AGENTS.md
   ansible.builtin.copy:
     mode: "0640"
     src: AGENTS.md
-    dest: ~/.codex/AGENTS.md
+    dest: "{{ codex_home }}/AGENTS.md"
+...

@@ -1,0 +1,27 @@
+---
+- name: Check if terminal aliases exist
+  ansible.builtin.stat:
+    path: "{{ codex_aliases_path }}"
+  register: codex_aliases_stat
+
+- name: Configure Codex OSS alias
+  ansible.builtin.lineinfile:
+    path: "{{ codex_aliases_path }}"
+    regexp: '^alias codex-oss='
+    line: >-
+      alias codex-oss={{ ('codex --oss -m ' ~ codex.oss_model) | quote }}
+    create: true
+    mode: "0644"
+  register: codex_oss_alias
+  when: (codex.oss_model | default('', true)) != ''
+
+- name: Remove stale Codex OSS alias
+  ansible.builtin.lineinfile:
+    path: "{{ codex_aliases_path }}"
+    regexp: '^alias codex-oss='
+    state: absent
+  register: codex_oss_alias_removal
+  when:
+    - codex_aliases_stat.stat.exists
+    - (codex.oss_model | default('', true)) == ''
+...

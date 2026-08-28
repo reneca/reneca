@@ -28,10 +28,9 @@
     has_gui: "{{ has_gui_check.stdout == 'true' }}"
 
 - name: Install Homebrew pre-requisite for MacOS
-  community.general.homebrew:
+  community.general.homebrew_cask:
     name: "{{ item }}"
     state: present
-    update_homebrew: true
   loop:
     - font-hack-nerd-font
   when: ansible_facts['os_family'] == "Darwin"

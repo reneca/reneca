@@ -1,0 +1,196 @@
+---
+- name: Test Codex configuration updates
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    codex_model_reasoning_effort: xhigh
+  tasks:
+    - name: Create test folder
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: reneca-codex-config.
+      register: codex_test_folder
+
+    - name: Test Codex configuration transaction
+      block:
+        - name: Define test paths and providers
+          ansible.builtin.set_fact:
+            codex_home: "{{ codex_test_folder.path }}"
+            codex_config_path: "{{ codex_test_folder.path }}/config.toml"
+            codex_aliases_path: "{{ codex_test_folder.path }}/aliases"
+            codex:
+              provider: openai
+              model: gpt-5.5
+              openai_base_url: https://example.test/v1
+              openrouter_enabled: true
+              oss_provider: ollama
+              oss_model: gpt-oss:20b
+
+        - name: Seed Codex configuration with application state
+          ansible.builtin.copy:
+            dest: "{{ codex_config_path }}"
+            mode: "0600"
+            content: |
+              # This comment and the application-owned tables must survive.
+              model = "old-model"
+              notify = ["notify-send"]
+
+              [projects."/tmp/example"]
+              trust_level = "trusted"
+
+              [plugins.documents]
+              enabled = true
+
+              [mcp_servers.example]
+              command = "example-server"
+
+              [desktop]
+              conversationDetailMode = "terminal"
+
+        - name: Seed terminal aliases
+          ansible.builtin.copy:
+            dest: "{{ codex_aliases_path }}"
+            mode: "0644"
+            content: |
+              alias gst='git status'
+
+        - name: Apply Codex configuration updates
+          ansible.builtin.include_tasks: ../roles/codex/tasks/config.yml
+
+        - name: Apply Codex OSS alias
+          ansible.builtin.include_tasks: ../roles/codex/tasks/alias.yml
+
+        - name: Read first Codex configuration result
+          ansible.builtin.slurp:
+            src: "{{ codex_config_path }}"
+          register: codex_test_result
+
+        - name: Parse first Codex configuration result
+          ansible.builtin.set_fact:
+            codex_test_config: >-
+              {{
+                codex_test_result.content
+                | b64decode
+                | community.general.from_toml
+              }}
+
+        - name: Read first terminal aliases result
+          ansible.builtin.slurp:
+            src: "{{ codex_aliases_path }}"
+          register: codex_test_aliases_result
+
+        - name: Verify managed and application-owned Codex settings
+          ansible.builtin.assert:
+            that:
+              - codex_test_config.model_provider == 'openai'
+              - codex_test_config.model_reasoning_effort == 'xhigh'
+              - codex_test_config.model == 'gpt-5.5'
+              - codex_test_config.openai_base_url == 'https://example.test/v1'
+              - codex_test_config.oss_provider == 'ollama'
+              - not codex_test_config.analytics.enabled
+              - codex_test_config.model_providers.openrouter.env_key == 'OPENROUTER_API_KEY'
+              - codex_test_config.projects['/tmp/example'].trust_level == 'trusted'
+              - codex_test_config.plugins.documents.enabled
+              - codex_test_config.mcp_servers.example.command == 'example-server'
+              - codex_test_config.desktop.conversationDetailMode == 'terminal'
+              - "'# This comment and the application-owned tables must survive.' in (codex_test_result.content | b64decode)"
+              - "\"alias codex-oss='codex --oss -m gpt-oss:20b'\" in (codex_test_aliases_result.content | b64decode)"
+
+        - name: Apply identical Codex configuration again
+          ansible.builtin.include_tasks: ../roles/codex/tasks/config.yml
+
+        - name: Apply identical Codex OSS alias again
+          ansible.builtin.include_tasks: ../roles/codex/tasks/alias.yml
+
+        - name: Verify Codex configuration update is idempotent
+          ansible.builtin.assert:
+            that:
+              - not codex_config_install.changed
+              - not codex_oss_alias.changed
+
+        - name: Select Codex OSS with the regular remote model
+          ansible.builtin.set_fact:
+            codex:
+              provider: openai
+              model: gpt-5.6-sol
+              openai_base_url: null
+              openrouter_enabled: false
+              oss_provider: ollama
+              oss_model: gpt-oss:20b
+
+        - name: Apply Codex configuration with OSS available
+          ansible.builtin.include_tasks: ../roles/codex/tasks/config.yml
+
+        - name: Read Codex configuration with OSS available
+          ansible.builtin.slurp:
+            src: "{{ codex_config_path }}"
+          register: codex_test_oss_result
+
+        - name: Parse Codex configuration with OSS available
+          ansible.builtin.set_fact:
+            codex_test_oss_config: >-
+              {{
+                codex_test_oss_result.content
+                | b64decode
+                | community.general.from_toml
+              }}
+
+        - name: Verify regular and OSS model selections are independent
+          ansible.builtin.assert:
+            that:
+              - codex_test_oss_config.model == 'gpt-5.6-sol'
+              - codex_test_oss_config.model_provider == 'openai'
+              - codex_test_oss_config.oss_provider == 'ollama'
+
+        - name: Select remote Codex without local providers
+          ansible.builtin.set_fact:
+            codex:
+              provider: openai
+              model: gpt-5.5
+              openai_base_url: null
+              openrouter_enabled: false
+              oss_provider: null
+              oss_model: null
+
+        - name: Apply remote Codex configuration
+          ansible.builtin.include_tasks: ../roles/codex/tasks/config.yml
+
+        - name: Remove stale Codex OSS alias
+          ansible.builtin.include_tasks: ../roles/codex/tasks/alias.yml
+
+        - name: Read final Codex configuration result
+          ansible.builtin.slurp:
+            src: "{{ codex_config_path }}"
+          register: codex_test_final_result
+
+        - name: Parse final Codex configuration result
+          ansible.builtin.set_fact:
+            codex_test_final_config: >-
+              {{
+                codex_test_final_result.content
+                | b64decode
+                | community.general.from_toml
+              }}
+
+        - name: Read final terminal aliases result
+          ansible.builtin.slurp:
+            src: "{{ codex_aliases_path }}"
+          register: codex_test_final_aliases_result
+
+        - name: Verify remote selectors and application state
+          ansible.builtin.assert:
+            that:
+              - codex_test_final_config.model_provider == 'openai'
+              - codex_test_final_config.model == 'gpt-5.5'
+              - codex_test_final_config.oss_provider is not defined
+              - codex_test_final_config.openai_base_url is not defined
+              - codex_test_final_config.projects['/tmp/example'].trust_level == 'trusted'
+              - "\"alias gst='git status'\" in (codex_test_final_aliases_result.content | b64decode)"
+              - "'alias codex-oss=' not in (codex_test_final_aliases_result.content | b64decode)"
+      always:
+        - name: Remove test folder
+          ansible.builtin.file:
+            path: "{{ codex_test_folder.path }}"
+            state: absent
+...

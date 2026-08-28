@@ -1,29 +1,70 @@
 ---
-- name: Get vscode version
-  ansible.builtin.shell: >
-    code -v | grep "^[0-9.]*$" | head -1
-  register: vscode_version
-  ignore_errors: true
+- name: Get VS Code version
+  ansible.builtin.command:
+    argv:
+      - "{{ vscode_command }}"
+      - --version
+  register: vscode_version_result
   changed_when: false
+  failed_when: false
 
-- name: Check vscode extensions if installed
-  ansible.builtin.shell: >
-    echo "{" && code --list-extensions --show-versions | grep "^[a-z.-]*@[0-9.]*$" | awk -F '@' '{print "\""$1"\": \""$2"\","}' | sed '$ s/,$/}/'
-  register: vscode_extensions
+- name: List VS Code extensions before installation
+  ansible.builtin.command:
+    argv:
+      - "{{ vscode_command }}"
+      - --list-extensions
+  register: vscode_existing_extensions_result
   changed_when: false
+  failed_when: false
   when:
-    - vscode_version.rc == 0
-    - vscode_version.stdout != ""
+    - vscode_version_result.rc == 0
+    - vscode_version_result.stdout_lines | length > 0
 
-- name: Set vscode facts if its installed
+- name: Install missing VS Code extensions
+  ansible.builtin.command:
+    argv:
+      - "{{ vscode_command }}"
+      - --install-extension
+      - "{{ item }}"
+  loop: >-
+    {{
+      (vscode_base_extensions + vscode_extensions)
+      | unique
+      | difference(vscode_existing_extensions_result.stdout_lines | default([]))
+    }}
+  register: vscode_extension_install_results
+  changed_when: true
+  when:
+    - vscode_version_result.rc == 0
+    - vscode_version_result.stdout_lines | length > 0
+    - vscode_existing_extensions_result.rc | default(1) == 0
+
+- name: List installed VS Code extensions
+  ansible.builtin.command:
+    argv:
+      - "{{ vscode_command }}"
+      - --list-extensions
+      - --show-versions
+  register: vscode_extensions_result
+  changed_when: false
+  failed_when: false
+  when:
+    - vscode_version_result.rc == 0
+    - vscode_version_result.stdout_lines | length > 0
+
+- name: Store VS Code facts  # noqa: var-naming[no-role-prefix]
   ansible.builtin.set_fact:
-    vscode: {
-      'version': "{{ vscode_version.stdout }}",
-      'extensions': "{{ vscode_extensions.stdout | from_json }}"
-    }
+    vscode:
+      version: "{{ vscode_version_result.stdout_lines | first }}"
+      extensions: >-
+        {{
+          dict(
+            vscode_extensions_result.stdout_lines
+            | map('split', '@')
+          )
+        }}
   when:
-    - vscode_version.rc == 0
-    - vscode_version.stdout != ""
-    - vscode_extensions.rc == 0
-    - vscode_extensions.stdout != ""
+    - vscode_version_result.rc == 0
+    - vscode_version_result.stdout_lines | length > 0
+    - vscode_extensions_result.rc | default(1) == 0
 ...

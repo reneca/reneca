@@ -1,0 +1,108 @@
+---
+- name: Test Claude settings rendering
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create test folder
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: reneca-claude-settings.
+      register: claude_test_folder
+
+    - name: Test Claude settings scenarios
+      block:
+        - name: Render Claude settings scenarios
+          ansible.builtin.template:
+            src: ../roles/claude/templates/settings.j2
+            dest: "{{ claude_test_folder.path }}/{{ item.name }}.json"
+            mode: "0600"
+            validate: "{{ ansible_playbook_python }} -m json.tool %s"
+          vars:
+            claude_code: "{{ item.claude_code }}"
+            lmstudio: "{{ item.lmstudio }}"
+            ollama: "{{ item.ollama }}"
+            gcloud: "{{ item.gcloud }}"
+          loop:
+            - name: custom
+              claude_code:
+                api_key_helper: ~/.claude/api-key-gen.sh
+                base_url: https://example.test/api
+                vertex_base_url: ""
+                openrouter_enabled: false
+                auth_token: ""
+                model: claude-opus-4-8
+              lmstudio: {}
+              ollama: {}
+              gcloud:
+                core: {}
+            - name: lmstudio
+              claude_code:
+                api_key_helper: ""
+                base_url: http://localhost:1234
+                vertex_base_url: ""
+                openrouter_enabled: false
+                auth_token: lmstudio
+                model: qwen/qwen3-coder-next
+              lmstudio:
+                host: http://localhost:1234
+              ollama: {}
+              gcloud:
+                core: {}
+            - name: openrouter
+              claude_code:
+                api_key_helper: ~/.claude/openrouter-api-key-helper.sh
+                base_url: https://openrouter.ai/api
+                vertex_base_url: ""
+                openrouter_enabled: true
+                auth_token: ""
+                model: ~anthropic/claude-sonnet-latest
+              lmstudio: {}
+              ollama: {}
+              gcloud:
+                core: {}
+            - name: vertex
+              claude_code:
+                api_key_helper: ""
+                base_url: ""
+                vertex_base_url: https://vertex.example.test
+                openrouter_enabled: false
+                auth_token: ""
+                model: claude-opus-4-8
+              lmstudio: {}
+              ollama: {}
+              gcloud:
+                core:
+                  project: test-project
+            - name: vertex-without-custom-url
+              claude_code:
+                api_key_helper: null
+                base_url: null
+                vertex_base_url: null
+                openrouter_enabled: false
+                auth_token: null
+                model: claude-opus-4-8
+              lmstudio: {}
+              ollama: {}
+              gcloud:
+                core:
+                  project: test-project
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Read OpenRouter Claude settings
+          ansible.builtin.slurp:
+            src: "{{ claude_test_folder.path }}/openrouter.json"
+          register: claude_openrouter_settings
+
+        - name: Verify OpenRouter secret is resolved at runtime
+          ansible.builtin.assert:
+            that:
+              - "'OPENROUTER_API_KEY' not in (claude_openrouter_settings.content | b64decode)"
+              - "'openrouter-api-key-helper.sh' in (claude_openrouter_settings.content | b64decode)"
+      always:
+        - name: Remove test folder
+          ansible.builtin.file:
+            path: "{{ claude_test_folder.path }}"
+            state: absent
+...

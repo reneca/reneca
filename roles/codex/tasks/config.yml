@@ -1,0 +1,156 @@
+---
+- name: Check if Codex configuration exists
+  ansible.builtin.stat:
+    path: "{{ codex_config_path }}"
+  register: codex_config_stat
+
+- name: Update Codex configuration transactionally
+  block:
+    - name: Create temporary Codex configuration
+      ansible.builtin.tempfile:
+        path: "{{ codex_home }}"
+        prefix: .config.toml.
+        state: file
+      register: codex_config_temp
+
+    - name: Copy existing Codex configuration
+      ansible.builtin.copy:
+        src: "{{ codex_config_path }}"
+        dest: "{{ codex_config_temp.path }}"
+        remote_src: true
+        mode: "0600"
+      when: codex_config_stat.stat.exists
+
+    - name: Update top-level Codex settings
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        mode: "0600"
+        modify_inactive_option: false
+      loop:
+        - option: model_reasoning_effort
+          value: "{{ codex_model_reasoning_effort | to_json }}"
+        - option: personality
+          value: '"pragmatic"'
+        - option: sandbox_mode
+          value: '"workspace-write"'
+        - option: approval_policy
+          value: '"on-request"'
+        - option: web_search
+          value: '"live"'
+      loop_control:
+        label: "{{ item.option }}"
+
+    - name: Update persistent Codex model selection
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        mode: "0600"
+        modify_inactive_option: false
+      loop:
+        - option: model_provider
+          value: "{{ codex.provider | to_json }}"
+        - option: model
+          value: "{{ codex.model | to_json }}"
+      loop_control:
+        label: "{{ item.option }}"
+
+    - name: Update Codex OSS provider
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: oss_provider
+        value: "{{ codex.oss_provider | to_json }}"
+        mode: "0600"
+        modify_inactive_option: false
+      when: (codex.oss_provider | default('', true)) != ''
+
+    - name: Remove stale Codex OSS provider
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: oss_provider
+        state: absent
+        mode: "0600"
+      when: (codex.oss_provider | default('', true)) == ''
+
+    - name: Update custom OpenAI base URL
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: openai_base_url
+        value: "{{ (codex.openai_base_url | default('', true)) | to_json }}"
+        mode: "0600"
+        modify_inactive_option: false
+      when: (codex.openai_base_url | default('', true)) != ''
+
+    - name: Remove stale custom OpenAI base URL
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        option: openai_base_url
+        state: absent
+        mode: "0600"
+      when: (codex.openai_base_url | default('', true)) == ''
+
+    - name: Update Codex table settings
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        section: "{{ item.section }}"
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        mode: "0600"
+        modify_inactive_option: false
+      loop:
+        - section: analytics
+          option: enabled
+          value: "false"
+        - section: tui
+          option: status_line
+          value: '["model-with-reasoning", "context-window-size", "current-dir", "context-used", "used-tokens"]'
+        - section: tui
+          option: status_line_use_colors
+          value: "true"
+      loop_control:
+        label: "{{ item.section }}.{{ item.option }}"
+
+    - name: Update OpenRouter Codex provider
+      community.general.ini_file:
+        path: "{{ codex_config_temp.path }}"
+        section: model_providers.openrouter
+        option: "{{ item.option }}"
+        value: "{{ item.value }}"
+        mode: "0600"
+        modify_inactive_option: false
+      loop:
+        - option: name
+          value: '"OpenRouter"'
+        - option: base_url
+          value: '"https://openrouter.ai/api/v1"'
+        - option: env_key
+          value: '"OPENROUTER_API_KEY"'
+      loop_control:
+        label: "model_providers.openrouter.{{ item.option }}"
+      when: codex.openrouter_enabled | bool
+
+    - name: Validate updated Codex configuration
+      ansible.builtin.command:
+        argv:
+          - "{{ ansible_playbook_python }}"
+          - -c
+          - "import sys, tomllib; tomllib.load(open(sys.argv[1], 'rb'))"
+          - "{{ codex_config_temp.path }}"
+      changed_when: false
+
+    - name: Install updated Codex configuration
+      ansible.builtin.copy:
+        src: "{{ codex_config_temp.path }}"
+        dest: "{{ codex_config_path }}"
+        remote_src: true
+        mode: "0600"
+      register: codex_config_install
+  always:
+    - name: Remove temporary Codex configuration
+      ansible.builtin.file:
+        path: "{{ codex_config_temp.path }}"
+        state: absent
+      when: codex_config_temp.path is defined
+...

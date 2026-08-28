@@ -1,0 +1,10 @@
+---
+codex_home: >-
+  {{
+    lookup('ansible.builtin.env', 'CODEX_HOME')
+    | default(ansible_facts['env']['HOME'] + '/.codex', true)
+  }}
+codex_config_path: "{{ codex_home }}/config.toml"
+codex_aliases_path: "{{ ansible_facts['env']['HOME'] }}/.aliases"
+codex_model_reasoning_effort: "xhigh"
+...

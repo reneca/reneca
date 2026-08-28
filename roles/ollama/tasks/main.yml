@@ -1,50 +1,78 @@
 ---
-- name: Check if ollama is installed
-  ansible.builtin.command: which ollama
+- name: Check if Ollama is installed
+  ansible.builtin.command:
+    argv:
+      - which
+      - ollama
   register: ollama_installed
-  ignore_errors: true
   changed_when: false
   failed_when: false
 
-- name: Get ollama version
-  ansible.builtin.shell: >
-    {{ ollama_installed.stdout }} -v | awk '{print $NF}'
+- name: Get Ollama version
+  ansible.builtin.command:
+    argv:
+      - "{{ ollama_installed.stdout }}"
+      - -v
   register: ollama_version
-  ignore_errors: true
   changed_when: false
+  failed_when: false
   when:
-   - ollama_installed.rc == 0
-   - ollama_installed.stdout != ""
+    - ollama_installed.rc == 0
+    - ollama_installed.stdout != ""
 
-- name: Set ollama fact from local
+- name: Store installed Ollama version
   ansible.builtin.set_fact:
-    ollama: {
-      'version': "{{ ollama_version.stdout }}",
-      'host': "{{ lookup('ansible.builtin.env', 'OLLAMA_HOST', default='http://localhost:11434') }}"
-    }
+    ollama: >-
+      {{
+        ollama | combine({
+          'version': ollama_version.stdout.split() | last
+        })
+      }}
   when:
-   - ollama_installed.rc == 0
-   - ollama_version.stdout != ""
+    - ollama_version.rc | default(1) == 0
+    - ollama_version.stdout | default('') != ''
 
-- name: Set ollama host fact if define
+- name: Define Ollama endpoint candidate
   ansible.builtin.set_fact:
-    ollama: "{{ ollama | combine({'host': lookup('ansible.builtin.env', 'OLLAMA_HOST')}) }}"
-  when:
-    - ollama_installed.rc != 0
-    - lookup('ansible.builtin.env', 'OLLAMA_HOST', default='') != ''
+    ollama_candidate_host: >-
+      {% if lookup('ansible.builtin.env', 'OLLAMA_HOST', default='') != '' -%}
+        {{ lookup('ansible.builtin.env', 'OLLAMA_HOST') | regex_replace('/+$', '') }}
+      {%- elif ollama_installed.rc == 0 -%}
+        http://localhost:11434
+      {%- endif %}
 
-- name: Retrieve ollama models from API
+- name: Validate configured Ollama endpoint
+  ansible.builtin.assert:
+    that:
+      - ollama_candidate_host is match('^https?://')
+    fail_msg: OLLAMA_HOST must be an HTTP or HTTPS URL.
+  when: ollama_candidate_host != ''
+
+- name: Retrieve Ollama models from API
   ansible.builtin.uri:
-    url: "{{ ollama.host }}/api/tags"
+    url: "{{ ollama_candidate_host }}/api/tags"
     return_content: true
+    timeout: 5
   register: ollama_tags
-  failed_when: >
-    ollama_tags.status != 200
-    or 'models' not in (ollama_tags.json | default({}))
-  when: ollama.host is defined
+  failed_when: >-
+    lookup('ansible.builtin.env', 'OLLAMA_HOST', default='') != ''
+    and (
+      ollama_tags.status | default(-1) != 200
+      or 'models' not in (ollama_tags.json | default({}))
+    )
+  when: ollama_candidate_host != ''
 
-- name: Set ollama models fact if define
+- name: Store reachable Ollama endpoint and models
   ansible.builtin.set_fact:
-    ollama: "{{ ollama | combine({'models': ollama_tags.json.models }) }}"
-  when: ollama.host is defined
+    ollama: >-
+      {{
+        ollama | combine({
+          'host': ollama_candidate_host,
+          'models': ollama_tags.json.models
+        })
+      }}
+  when:
+    - ollama_candidate_host != ''
+    - ollama_tags.status | default(-1) == 200
+    - "'models' in (ollama_tags.json | default({}))"
 ...

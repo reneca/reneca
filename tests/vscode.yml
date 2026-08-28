@@ -1,0 +1,80 @@
+---
+- name: Test VS Code extension management
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Create test folder
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: reneca-vscode.
+      register: vscode_test_folder
+
+    - name: Test VS Code role
+      block:
+        - name: Define mock VS Code paths
+          ansible.builtin.set_fact:
+            vscode_command: "{{ vscode_test_folder.path }}/code"
+            vscode_test_extensions_path: "{{ vscode_test_folder.path }}/code.extensions"
+
+        - name: Create mock VS Code command
+          ansible.builtin.copy:
+            dest: "{{ vscode_command }}"
+            mode: "0755"
+            content: |
+              #!/bin/sh
+              set -eu
+
+              extensions_file="${0}.extensions"
+              case "${1:-}" in
+                --version)
+                  echo "1.100.0"
+                  ;;
+                --list-extensions)
+                  if [ "${2:-}" = "--show-versions" ]; then
+                    cat "${extensions_file}"
+                  else
+                    cut -d@ -f1 "${extensions_file}"
+                  fi
+                  ;;
+                --install-extension)
+                  echo "${2}@1.0.0" >> "${extensions_file}"
+                  ;;
+                *)
+                  exit 2
+                  ;;
+              esac
+
+        - name: Seed mock VS Code extensions
+          ansible.builtin.copy:
+            dest: "{{ vscode_test_extensions_path }}"
+            mode: "0600"
+            content: |
+              existing.extension@2.0.0
+
+        - name: Apply VS Code role  # noqa: role-name[path]
+          ansible.builtin.include_role:
+            name: ../roles/vscode
+
+        - name: Verify base and existing VS Code extensions
+          ansible.builtin.assert:
+            that:
+              - vscode.version == '1.100.0'
+              - vscode.extensions['existing.extension'] == '2.0.0'
+              - vscode.extensions['rust-lang.rust-analyzer'] == '1.0.0'
+              - vscode_extension_install_results.changed
+
+        - name: Apply VS Code role again  # noqa: role-name[path]
+          ansible.builtin.include_role:
+            name: ../roles/vscode
+
+        - name: Verify VS Code extension installation is idempotent
+          ansible.builtin.assert:
+            that:
+              - not vscode_extension_install_results.changed
+      always:
+        - name: Remove test folder
+          ansible.builtin.file:
+            path: "{{ vscode_test_folder.path }}"
+            state: absent
+...
