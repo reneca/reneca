@@ -55,8 +55,8 @@
             when: "{{ rust.version is defined }}",
           }
         - {
-            name: "VS Code",
-            value: "{{ vscode }}",
+            name: "VSCode",
+            value: "{{ vscode | default(omit) }}",
             when: "{{ vscode is defined and vscode.version is defined }}",
           }
         - {
