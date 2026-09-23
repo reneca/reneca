@@ -56,11 +56,6 @@
         {%- else -%}
           {{ '' }}
         {%- endif %}
-      vertex_base_url: >-
-        {{
-          lookup('ansible.builtin.env', 'ANTHROPIC_VERTEX_BASE_URL', default='')
-          | default('', true)
-        }}
       openrouter_enabled: >-
         {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}
       auth_token: >-
@@ -95,10 +90,7 @@
       - >-
         (claude_code.base_url | default('', true)) == ''
         or claude_code.base_url is match('^https?://')
-      - >-
-        (claude_code.vertex_base_url | default('', true)) == ''
-        or claude_code.vertex_base_url is match('^https?://')
-    fail_msg: Claude API base URLs must use HTTP or HTTPS.
+    fail_msg: Claude API base URL must use HTTP or HTTPS.
 
 - name: Claude Code settings
   ansible.builtin.template:

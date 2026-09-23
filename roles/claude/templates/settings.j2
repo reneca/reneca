@@ -1,6 +1,5 @@
 {% set api_key_helper = claude_code.api_key_helper | default('', true) %}
 {% set base_url = claude_code.base_url | default('', true) %}
-{% set vertex_base_url = claude_code.vertex_base_url | default('', true) %}
 {% set auth_token = claude_code.auth_token | default('', true) %}
 {
 {% if api_key_helper != '' and base_url != '' %}
@@ -13,6 +12,7 @@
 {% endif %}
     "DISABLE_TELEMETRY": "1",
     "ENABLE_TOOL_SEARCH": "true",
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
     "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 {% if base_url != '' %}
 {% if api_key_helper != '' %}
@@ -31,18 +31,6 @@
     "ANTHROPIC_DEFAULT_SONNET_MODEL": {{ claude_code.model | to_json }},
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ claude_code.model | to_json }}
 {% endif %}
-{% elif gcloud.core.project is defined %}
-{% if vertex_base_url != '' %}
-    "ANTHROPIC_VERTEX_BASE_URL": {{ vertex_base_url | to_json }},
-    "CLAUDE_CODE_SKIP_VERTEX_AUTH": "1",
-{% endif %}
-    "CLAUDE_CODE_USE_VERTEX": "1",
-    "CLOUD_ML_REGION": "europe-west1",
-    "VERTEX_REGION_CLAUDE_4_7_OPUS": "eu",
-    "ANTHROPIC_VERTEX_PROJECT_ID": {{ gcloud.core.project | to_json }},
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "claude-opus-4-8",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "claude-sonnet-4-6",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "claude-haiku-4-5"
 {% endif %}
   },
   "model": {{ claude_code.model | to_json }},
