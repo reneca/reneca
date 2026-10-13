@@ -57,7 +57,7 @@
           {{ '' }}
         {%- endif %}
       openrouter_enabled: >-
-        {{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}
+        {{ claude_code_openrouter_enabled }}
       auth_token: >-
         {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
         {%- elif lmstudio.host is defined -%}
@@ -67,22 +67,84 @@
         {%- else -%}
           {{ '' }}
         {%- endif %}
-      model: >-
-        {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
-          claude-opus-4-8
-        {%- elif lmstudio.host is defined -%}
-          qwen/qwen3-coder-next
-        {%- elif ollama.host is defined -%}
-          {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
-            qwen3-coder-next:q8_0
-          {%- else -%}
-            qwen3-coder
-          {%- endif -%}
-        {%- elif lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' -%}
-          ~anthropic/claude-sonnet-latest
+      model: "{{ claude_code.model | default(claude_code_default_model) }}"
+      opus_model: "{{ claude_code.opus_model | default(claude_code_default_opus_model, true) }}"
+      sonnet_model: "{{ claude_code.sonnet_model | default(claude_code_default_sonnet_model, true) }}"
+      haiku_model: "{{ claude_code.haiku_model | default(claude_code_default_haiku_model, true) }}"
+  vars:
+    claude_code_openrouter_enabled: "{{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}"
+    claude_code_default_model: >-
+      {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+        claude-opus
+      {%- elif lmstudio.host is defined -%}
+        qwen/qwen3-coder-next
+      {%- elif ollama.host is defined -%}
+        {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
+          qwen3-coder-next:q8_0
         {%- else -%}
-          claude-opus-4-8
+          qwen3-coder
         {%- endif -%}
+      {%- elif claude_code_openrouter_enabled -%}
+        ~anthropic/claude-sonnet-latest
+      {%- else -%}
+        claude-opus
+      {%- endif -%}
+    claude_code_default_opus_model: >-
+      {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+        claude-opus
+      {%- elif lmstudio.host is defined -%}
+        qwen/qwen3-coder-next
+      {%- elif ollama.host is defined -%}
+        {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
+          qwen3-coder-next:q8_0
+        {%- else -%}
+          qwen3-coder
+        {%- endif -%}
+      {%- elif claude_code_openrouter_enabled -%}
+        ~anthropic/claude-opus-latest
+      {%- else -%}
+        claude-opus
+      {%- endif -%}
+    claude_code_default_sonnet_model: >-
+      {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+        claude-sonnet
+      {%- elif lmstudio.host is defined -%}
+        qwen/qwen3-coder-next
+      {%- elif ollama.host is defined -%}
+        {%- if ollama.version is not defined or ansible_facts['memtotal_mb'] > 90000 -%}
+          qwen3-coder-next:q8_0
+        {%- else -%}
+          qwen3-coder
+        {%- endif -%}
+      {%- elif claude_code_openrouter_enabled -%}
+        ~anthropic/claude-sonnet-latest
+      {%- else -%}
+        claude-sonnet
+      {%- endif -%}
+    claude_code_default_haiku_model: >-
+      {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
+        claude-haiku
+      {%- elif lmstudio.host is defined -%}
+        qwen/qwen3-coder-next
+      {%- elif ollama.host is defined -%}
+        qwen3-coder
+      {%- elif claude_code_openrouter_enabled -%}
+        ~anthropic/claude-haiku-latest
+      {%- else -%}
+        claude-haiku
+      {%- endif -%}
+
+- name: Validate Claude Code models
+  ansible.builtin.assert:
+    that:
+      - item is string
+      - item | trim | length > 0
+    fail_msg: Claude Code model names must be non-empty strings.
+  loop:
+    - "{{ claude_code.model }}"
+    - "{{ claude_code.opus_model }}"
+    - "{{ claude_code.sonnet_model }}"
+    - "{{ claude_code.haiku_model }}"
 
 - name: Validate Claude API endpoints
   ansible.builtin.assert:

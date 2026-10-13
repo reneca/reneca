@@ -52,12 +52,12 @@
       {{
         codex | combine({
           'model': (
-            'gpt-5.6-sol'
+            'gpt-6.1-sol'
             if (codex.openai_base_url | default('', true)) != ''
             else (
               '~openai/gpt-latest'
               if codex.openrouter_enabled | bool
-              else 'gpt-5.6-sol'
+              else 'gpt-6.1-sol'
             )
           )
         })

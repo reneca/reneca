@@ -29,7 +29,10 @@
                 base_url: https://example.test/api
                 openrouter_enabled: false
                 auth_token: ""
-                model: claude-opus-4-8
+                model: opus
+                opus_model: gateway/opus
+                sonnet_model: gateway/sonnet
+                haiku_model: gateway/haiku
               lmstudio: {}
               ollama: {}
             - name: lmstudio
@@ -42,6 +45,32 @@
               lmstudio:
                 host: http://localhost:1234
               ollama: {}
+            - name: lmstudio-small-haiku
+              claude_code:
+                api_key_helper: ""
+                base_url: http://localhost:1234
+                openrouter_enabled: false
+                auth_token: lmstudio
+                model: qwen/qwen3-coder-next
+                opus_model: qwen/qwen3-coder-next
+                sonnet_model: qwen/qwen3-coder-next
+                haiku_model: local/small-model
+              lmstudio:
+                host: http://localhost:1234
+              ollama: {}
+            - name: ollama-small-haiku
+              claude_code:
+                api_key_helper: ""
+                base_url: http://localhost:11434
+                openrouter_enabled: false
+                auth_token: ollama
+                model: qwen3-coder-next:q8_0
+                opus_model: qwen3-coder-next:q8_0
+                sonnet_model: qwen3-coder-next:q8_0
+                haiku_model: local/small-model
+              lmstudio: {}
+              ollama:
+                host: http://localhost:11434
             - name: openrouter
               claude_code:
                 api_key_helper: ~/.claude/openrouter-api-key-helper.sh
@@ -49,8 +78,62 @@
                 openrouter_enabled: true
                 auth_token: ""
                 model: ~anthropic/claude-sonnet-latest
+                opus_model: ~anthropic/claude-opus-latest
+                sonnet_model: ~anthropic/claude-sonnet-latest
+                haiku_model: ~anthropic/claude-haiku-latest
               lmstudio: {}
               ollama: {}
+            - name: openrouter-custom
+              claude_code:
+                api_key_helper: ~/.claude/openrouter-api-key-helper.sh
+                base_url: https://openrouter.ai/api
+                openrouter_enabled: true
+                auth_token: ""
+                model: sonnet
+                opus_model: provider/large
+                sonnet_model: provider/medium
+                haiku_model: provider/small
+              lmstudio: {}
+              ollama: {}
+            - name: native
+              claude_code:
+                api_key_helper: ""
+                base_url: ""
+                openrouter_enabled: false
+                auth_token: ""
+                model: opus
+                opus_model: claude-opus
+                sonnet_model: claude-sonnet
+                haiku_model: claude-haiku
+              lmstudio: {}
+              ollama: {}
+          loop_control:
+            label: "{{ item.name }}"
+
+        - name: Render Claude status line scenarios
+          ansible.builtin.template:
+            src: ../roles/claude/templates/statusline.j2
+            dest: "{{ claude_test_folder.path }}/statusline-{{ item.name }}.py"
+            mode: "0750"
+            validate: "{{ ansible_playbook_python }} -m py_compile %s"
+          vars:
+            claude_code: "{{ item.claude_code }}"
+          loop:
+            - name: helper
+              claude_code:
+                api_key_helper: ~/.claude/api-key-gen.sh
+                base_url: https://portal.example.test
+                openrouter_enabled: false
+            - name: openrouter
+              claude_code:
+                api_key_helper: ~/.claude/openrouter-api-key-helper.sh
+                base_url: https://openrouter.ai/api
+                openrouter_enabled: true
+            - name: no-helper
+              claude_code:
+                api_key_helper: ""
+                base_url: ""
+                openrouter_enabled: false
           loop_control:
             label: "{{ item.name }}"
 
@@ -64,6 +147,116 @@
             that:
               - "'OPENROUTER_API_KEY' not in (claude_openrouter_settings.content | b64decode)"
               - "'openrouter-api-key-helper.sh' in (claude_openrouter_settings.content | b64decode)"
+
+        - name: Verify independent Claude model tiers
+          ansible.builtin.command:
+            argv:
+              - "{{ ansible_playbook_python }}"
+              - "-"
+              - "{{ claude_test_folder.path }}"
+            stdin: |
+              import json
+              import sys
+              from pathlib import Path
+
+              folder = Path(sys.argv[1])
+              for name, model, tiers in [
+                  ('custom', 'opus', ('gateway/opus', 'gateway/sonnet', 'gateway/haiku')),
+                  ('lmstudio', 'qwen/qwen3-coder-next', ('qwen/qwen3-coder-next',) * 3),
+                  ('lmstudio-small-haiku', 'qwen/qwen3-coder-next', (
+                      'qwen/qwen3-coder-next', 'qwen/qwen3-coder-next', 'local/small-model',
+                  )),
+                  ('ollama-small-haiku', 'qwen3-coder-next:q8_0', (
+                      'qwen3-coder-next:q8_0', 'qwen3-coder-next:q8_0', 'local/small-model',
+                  )),
+                  ('openrouter', '~anthropic/claude-sonnet-latest', (
+                      '~anthropic/claude-opus-latest',
+                      '~anthropic/claude-sonnet-latest',
+                      '~anthropic/claude-haiku-latest',
+                  )),
+                  ('openrouter-custom', 'sonnet', ('provider/large', 'provider/medium', 'provider/small')),
+                  ('native', 'opus', ('claude-opus', 'claude-sonnet', 'claude-haiku')),
+              ]:
+                  settings = json.loads((folder / f'{name}.json').read_text())
+                  assert settings['model'] == model, name
+                  for tier, expected in zip(('OPUS', 'SONNET', 'HAIKU'), tiers):
+                      assert settings['env'][f'ANTHROPIC_DEFAULT_{tier}_MODEL'] == expected, (name, tier)
+              assert 'ANTHROPIC_BASE_URL' not in settings['env']
+          changed_when: false
+
+        - name: Read Claude status line scenarios
+          ansible.builtin.slurp:
+            src: "{{ claude_test_folder.path }}/statusline-{{ item }}.py"
+          loop:
+            - helper
+            - openrouter
+            - no-helper
+          register: claude_status_lines
+
+        - name: Verify budget code is conditional
+          ansible.builtin.assert:
+            that:
+              - "'api-key-gen.sh' in (claude_status_lines.results[0].content | b64decode)"
+              - "'https://portal.example.test' in (claude_status_lines.results[0].content | b64decode)"
+              - "'/key/info' in (claude_status_lines.results[0].content | b64decode)"
+              - "'/v1/key' not in (claude_status_lines.results[0].content | b64decode)"
+              - "'https://openrouter.ai/api' in (claude_status_lines.results[1].content | b64decode)"
+              - "'/v1/key' in (claude_status_lines.results[1].content | b64decode)"
+              - "'/team/info' not in (claude_status_lines.results[1].content | b64decode)"
+              - "'load_budget' not in (claude_status_lines.results[2].content | b64decode)"
+              - "'urllib.request' not in (claude_status_lines.results[2].content | b64decode)"
+
+        - name: Verify working-day budget pace
+          ansible.builtin.command:
+            argv:
+              - "{{ ansible_playbook_python }}"
+              - "-"
+              - "{{ claude_test_folder.path }}/statusline-{{ item }}.py"
+            stdin: |
+              import math
+              import sys
+              from datetime import datetime, timezone
+
+              namespace = {}
+              with open(sys.argv[1]) as script:
+                  exec(script.read().split('# Read JSON from stdin', 1)[0], namespace)
+
+              class FixedDatetime(datetime):
+                  current = datetime(2026, 10, 15, 12, tzinfo=timezone.utc)
+
+                  @classmethod
+                  def now(cls, tz=None):
+                      return cls.current
+
+              namespace['datetime'] = FixedDatetime
+              workdays = namespace['workdays']
+              pace_delta = namespace['pace_delta']
+              parse = datetime.fromisoformat
+              assert workdays(parse('2026-10-16T12:00:00+00:00'), parse('2026-10-19T12:00:00+00:00')) == 1
+              assert workdays(parse('2026-10-17T00:00:00+00:00'), parse('2026-10-19T00:00:00+00:00')) == 0
+
+              budget = {
+                  'spend': 50,
+                  'max_budget': 100,
+                  'budget_duration': '7d',
+                  'budget_reset_at': '2026-10-19T00:00:00Z',
+              }
+              assert math.isclose(pace_delta(budget), -20)
+              assert '▼-20%' in namespace['budget_segment']('key', budget)
+              budget['budget_reset_at'] = '2026-10-19T00:00:00'
+              assert math.isclose(pace_delta(budget), -20)
+
+              FixedDatetime.current = parse('2026-10-10T00:00:00+00:00')
+              assert math.isclose(pace_delta(budget), 50)
+              FixedDatetime.current = parse('2026-10-20T00:00:00+00:00')
+              assert math.isclose(pace_delta(budget), -50)
+              budget['budget_duration'] = '2d'
+              assert pace_delta(budget) is None
+              assert namespace['period_start'](parse('2026-11-01T00:00:00+00:00'), '30d') == parse('2026-10-01T00:00:00+00:00')
+          loop:
+            - helper
+            - openrouter
+          changed_when: false
       always:
         - name: Remove test folder
           ansible.builtin.file:

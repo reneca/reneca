@@ -9,6 +9,8 @@
 {% if lmstudio.host is defined or ollama.host is defined %}
     "API_TIMEOUT_MS": "3600000",
     "CLAUDE_STREAM_IDLE_TIMEOUT_MS": "600000",
+    "API_FORCE_IDLE_TIMEOUT": "0",
+    "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
 {% endif %}
     "DISABLE_TELEMETRY": "1",
     "ENABLE_TOOL_SEARCH": "true",
@@ -22,16 +24,10 @@
     "ANTHROPIC_API_KEY": "",
 {% endif %}
     "ANTHROPIC_BASE_URL": {{ base_url | to_json }},
-{% if claude_code.openrouter_enabled | bool %}
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": "~anthropic/claude-opus-latest",
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": "~anthropic/claude-sonnet-latest",
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": "~anthropic/claude-haiku-latest"
-{% else %}
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": {{ claude_code.model | to_json }},
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": {{ claude_code.model | to_json }},
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ claude_code.model | to_json }}
 {% endif %}
-{% endif %}
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": {{ claude_code.opus_model | default(claude_code.model, true) | to_json }},
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": {{ claude_code.sonnet_model | default(claude_code.model, true) | to_json }},
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ claude_code.haiku_model | default(claude_code.model, true) | to_json }}
   },
   "model": {{ claude_code.model | to_json }},
   "permissions": {

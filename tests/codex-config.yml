@@ -21,7 +21,7 @@
             codex_aliases_path: "{{ codex_test_folder.path }}/aliases"
             codex:
               provider: openai
-              model: gpt-5.5
+              model: gpt-6.1-sol
               openai_base_url: https://example.test/v1
               openrouter_enabled: true
               oss_provider: ollama
@@ -85,7 +85,7 @@
             that:
               - codex_test_config.model_provider == 'openai'
               - codex_test_config.model_reasoning_effort == 'xhigh'
-              - codex_test_config.model == 'gpt-5.5'
+              - codex_test_config.model == 'gpt-6.1-sol'
               - codex_test_config.openai_base_url == 'https://example.test/v1'
               - codex_test_config.oss_provider == 'ollama'
               - not codex_test_config.analytics.enabled
@@ -113,7 +113,7 @@
           ansible.builtin.set_fact:
             codex:
               provider: openai
-              model: gpt-5.6-sol
+              model: gpt-6.1-sol
               openai_base_url: null
               openrouter_enabled: false
               oss_provider: ollama
@@ -139,7 +139,7 @@
         - name: Verify regular and OSS model selections are independent
           ansible.builtin.assert:
             that:
-              - codex_test_oss_config.model == 'gpt-5.6-sol'
+              - codex_test_oss_config.model == 'gpt-6.1-sol'
               - codex_test_oss_config.model_provider == 'openai'
               - codex_test_oss_config.oss_provider == 'ollama'
 
@@ -147,7 +147,7 @@
           ansible.builtin.set_fact:
             codex:
               provider: openai
-              model: gpt-5.5
+              model: gpt-6.1-sol
               openai_base_url: null
               openrouter_enabled: false
               oss_provider: null
@@ -182,7 +182,7 @@
           ansible.builtin.assert:
             that:
               - codex_test_final_config.model_provider == 'openai'
-              - codex_test_final_config.model == 'gpt-5.5'
+              - codex_test_final_config.model == 'gpt-6.1-sol'
               - codex_test_final_config.oss_provider is not defined
               - codex_test_final_config.openai_base_url is not defined
               - codex_test_final_config.projects['/tmp/example'].trust_level == 'trusted'

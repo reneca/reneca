@@ -1,8 +1,21 @@
+{% set api_key_helper = claude_code.api_key_helper | default('', true) -%}
+{% set base_url = claude_code.base_url | default('', true) -%}
+{% set openrouter_enabled = claude_code.openrouter_enabled | default(false) | bool -%}
 #!/usr/bin/env python3
 import json
 import sys
 import os
 import subprocess
+{% if api_key_helper != '' %}
+import re
+import tempfile
+import time
+{% if not openrouter_enabled %}
+import urllib.parse
+{% endif %}
+import urllib.request
+from datetime import datetime, timedelta, timezone
+{% endif %}
 
 # ANSI colors
 BLUE = '\033[34m'
@@ -10,6 +23,254 @@ GREEN = '\033[32m'
 RED = '\033[31m'
 ORANGE = '\033[33m'
 RESET = '\033[0m'
+{% if api_key_helper != '' %}
+DIM = '\033[2m'
+
+PORTAL_URL = {{ base_url | to_json }}.rstrip('/')
+KEY_HELPER = os.path.expanduser({{ api_key_helper | to_json }})
+BUDGET_CACHE = os.path.expanduser('~/.claude/cache/litellm-budget.json')
+BUDGET_TTL = 60
+{% if not openrouter_enabled %}
+BUDGET_FIELDS = ('spend', 'max_budget', 'budget_duration', 'budget_reset_at')
+{% endif %}
+
+
+def api_get(path, token):
+    req = urllib.request.Request(PORTAL_URL + path, headers={'Authorization': f'Bearer {token}'})
+    with urllib.request.urlopen(req, timeout=3) as response:
+        return json.load(response)
+
+
+{% if openrouter_enabled %}
+def next_openrouter_reset(period):
+    now = datetime.now(timezone.utc)
+    midnight = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    if period == 'daily':
+        return midnight + timedelta(days=1), '1d'
+    if period == 'weekly':
+        return midnight + timedelta(days=7 - now.weekday()), '7d'
+    if period == 'monthly':
+        if now.month == 12:
+            return midnight.replace(year=now.year + 1, month=1, day=1), '30d'
+        return midnight.replace(month=now.month + 1, day=1), '30d'
+    return None, None
+
+
+def fetch_openrouter_budget(token):
+    info = api_get('/v1/key', token)['data']
+    limit = info.get('limit')
+    remaining = info.get('limit_remaining')
+    label = 'OpenRouter key'
+
+    if (limit is None or remaining is None) and info.get('is_management_key'):
+        credits = api_get('/v1/credits', token)['data']
+        limit = credits.get('total_credits')
+        usage = credits.get('total_usage')
+        remaining = limit - usage if limit is not None and usage is not None else None
+        label = 'OpenRouter credits'
+
+    if limit is None or remaining is None:
+        return None
+
+    limit = float(limit)
+    remaining = float(remaining)
+    reset, duration = next_openrouter_reset(info.get('limit_reset'))
+    return {
+        'spend': max(limit - remaining, 0),
+        'max_budget': limit,
+        'budget_duration': duration,
+        'budget_reset_at': reset.isoformat() if reset else None,
+        'remaining': remaining,
+        'label': label,
+    }
+{% endif %}
+
+
+def fetch_budget():
+    token = subprocess.run(
+        ['sh', KEY_HELPER],
+        capture_output=True,
+        check=True,
+        text=True,
+        timeout=5,
+    ).stdout.strip()
+    if not token:
+        raise ValueError('API key helper returned an empty token')
+
+{% if openrouter_enabled %}
+    return {
+        'ts': time.time(),
+        'portal_url': PORTAL_URL,
+        'key': fetch_openrouter_budget(token),
+        'team': None,
+    }
+{% else %}
+    key = api_get('/key/info', token)['info']
+    team = None
+    if key.get('team_id'):
+        team_id = urllib.parse.quote(str(key['team_id']), safe='')
+        info = api_get(f'/team/info?team_id={team_id}', token)['team_info']
+        team = {field: info.get(field) for field in BUDGET_FIELDS} | {
+            'alias': info.get('team_alias'),
+        }
+    return {
+        'ts': time.time(),
+        'portal_url': PORTAL_URL,
+        'key': {field: key.get(field) for field in BUDGET_FIELDS},
+        'team': team,
+    }
+{% endif %}
+
+
+def save_budget(budget):
+    cache_dir = os.path.dirname(BUDGET_CACHE)
+    os.makedirs(cache_dir, mode=0o700, exist_ok=True)
+    fd, tmp = tempfile.mkstemp(prefix='.budget.', dir=cache_dir)
+    try:
+        with os.fdopen(fd, 'w') as cache_file:
+            json.dump(budget, cache_file)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, BUDGET_CACHE)
+    except Exception:
+        try:
+            os.unlink(tmp)
+        except OSError:
+            pass
+        raise
+
+
+def load_budget():
+    try:
+        with open(BUDGET_CACHE) as cache_file:
+            cache = json.load(cache_file)
+        if cache.get('portal_url') != PORTAL_URL:
+            cache = None
+    except (AttributeError, OSError, ValueError):
+        cache = None
+
+    now = time.time()
+    try:
+        if cache and now - float(cache['ts']) < BUDGET_TTL:
+            return cache
+    except (KeyError, TypeError, ValueError):
+        cache = None
+
+    try:
+        budget = fetch_budget()
+    except Exception:
+        # Cache failures too, otherwise every status refresh can block on the API.
+        budget = cache or {
+            'portal_url': PORTAL_URL,
+            'key': None,
+            'team': None,
+        }
+        budget['ts'] = now
+
+    try:
+        save_budget(budget)
+    except OSError:
+        pass
+    return budget
+
+
+def period_start(reset, duration):
+    duration = {
+        'hourly': '1h',
+        'daily': '1d',
+        'weekly': '7d',
+        'monthly': '30d',
+    }.get(duration.strip().lower(), duration)
+    match = re.fullmatch(r'(\d+)(mo|[smhdw])', duration)
+    if not match:
+        raise ValueError(f'Unsupported budget duration: {duration}')
+    n, unit = match.groups()
+    n = int(n)
+
+    # LiteLLM standardizes 30d budgets to calendar months.
+    if unit == 'd' and n == 30 and reset.day == 1:
+        unit = 'mo'
+        n = 1
+    if unit == 'mo':
+        year, month = divmod(reset.year * 12 + reset.month - 1 - n, 12)
+        return reset.replace(year=year, month=month + 1)
+
+    unit_name = {
+        's': 'seconds',
+        'm': 'minutes',
+        'h': 'hours',
+        'd': 'days',
+        'w': 'weeks',
+    }[unit]
+    return reset - timedelta(**{unit_name: n})
+
+
+def workdays(a, b):
+    """Mon-Fri time between a and b, in days."""
+    total = 0.0
+    day = a.replace(hour=0, minute=0, second=0, microsecond=0)
+    while day < b:
+        nxt = day + timedelta(days=1)
+        if day.weekday() < 5:
+            total += max((min(b, nxt) - max(a, day)) / timedelta(days=1), 0)
+        day = nxt
+    return total
+
+
+def pace_delta(budget):
+    """Points of budget spent over (+) or under (-) linear pace across working days."""
+    if not budget.get('budget_reset_at') or not budget.get('budget_duration'):
+        return None
+    try:
+        reset_value = str(budget['budget_reset_at']).replace('Z', '+00:00')
+        reset = datetime.fromisoformat(reset_value)
+        if reset.tzinfo is None:
+            reset = reset.replace(tzinfo=timezone.utc)
+        start = period_start(reset, budget['budget_duration'])
+        period = workdays(start, reset)
+        if period <= 0:
+            return None
+        now = min(max(datetime.now(timezone.utc), start), reset)
+        return (float(budget['spend']) / float(budget['max_budget']) - workdays(start, now) / period) * 100
+    except (AttributeError, TypeError, ValueError, OverflowError):
+        return None
+
+
+def usd(value):
+    return f'${value / 1000:.1f}k' if value >= 1000 else f'${value:.0f}'
+
+
+def bar(pct, width=10):
+    bounded_pct = min(max(pct, 0), 100)
+    filled = round(bounded_pct / 100 * width)
+    color = GREEN if pct < 50 else ORANGE if pct < 80 else RED
+    return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
+
+
+def budget_segment(label, budget, show_remaining=False):
+    if not budget:
+        return None
+    try:
+        spend = float(budget['spend'])
+        max_budget = float(budget['max_budget'])
+    except (KeyError, TypeError, ValueError):
+        return None
+    if max_budget <= 0:
+        return None
+
+    pct = spend / max_budget * 100
+    if show_remaining:
+        remaining = max(float(budget.get('remaining', max_budget - spend)), 0)
+        amount = f'{usd(remaining)} left'
+    else:
+        amount = f'{usd(spend)}/{usd(max_budget)}'
+    segment = f'{label} {bar(pct)} {pct:.0f}% {amount}'
+
+    delta = pace_delta(budget)
+    if delta is not None:
+        color, arrow = (RED, '▲') if delta > 0 else (GREEN, '▼')
+        segment += f' {color}{arrow}{delta:+.0f}%{RESET}'
+    return segment
+{% endif %}
 
 # Read JSON from stdin
 data = json.load(sys.stdin)
@@ -59,3 +320,26 @@ if os.path.exists('.git'):
         pass
 
 print(f"{current_dir}{git_branch} | 🤖 {BLUE}{model_name}{RESET} | 💰 {RED}{cost:.2f}${RESET}{context_window}")
+{% if api_key_helper != '' %}
+
+budget = load_budget()
+{% if openrouter_enabled %}
+key = budget.get('key')
+segment = budget_segment(
+    f"🌐 {key.get('label', 'OpenRouter')}" if key else '🌐 OpenRouter',
+    key,
+    show_remaining=True,
+)
+if segment:
+    print(segment)
+{% else %}
+team = budget.get('team')
+segments = [
+    budget_segment('🔑', budget.get('key')),
+    budget_segment(f"👥 {team.get('alias') or 'team'}" if team else '👥 team', team),
+]
+segments = [segment for segment in segments if segment]
+if segments:
+    print(' | '.join(segments))
+{% endif %}
+{% endif %}

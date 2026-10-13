@@ -6,5 +6,5 @@ codex_home: >-
   }}
 codex_config_path: "{{ codex_home }}/config.toml"
 codex_aliases_path: "{{ ansible_facts['env']['HOME'] }}/.aliases"
-codex_model_reasoning_effort: "xhigh"
+codex_model_reasoning_effort: "high"
 ...
