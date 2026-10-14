@@ -261,7 +261,7 @@ def bar(pct, width=10):
     return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
 
 
-def budget_segment(label, budget, show_remaining=False, show_pace=True, precise=False):
+def budget_segment(label, budget, show_remaining=False, precise=False):
     if not budget:
         return None
     try:
@@ -280,7 +280,7 @@ def budget_segment(label, budget, show_remaining=False, show_pace=True, precise=
         amount = f'{usd(spend, precise)}/{usd(max_budget, precise)}'
     segment = f'{label} {bar(pct)} {pct:.0f}% {amount}'
 
-    delta = pace_delta(budget) if show_pace else None
+    delta = pace_delta(budget)
     if delta is not None:
         color, arrow = (RED, '▲') if delta > 0 else (GREEN, '▼')
         segment += f' {color}{arrow}{delta:+.0f}%{RESET}'
@@ -350,7 +350,7 @@ if segment:
 {% else %}
 team = budget.get('team')
 segments = [
-    budget_segment('🔑', budget.get('key'), show_pace=False, precise=True),
+    budget_segment('🔑', budget.get('key'), precise=True),
     budget_segment('👤', budget.get('member'), precise=True),
     budget_segment(f"👥 {team.get('alias') or 'team'}" if team else '👥 team', team),
 ]
