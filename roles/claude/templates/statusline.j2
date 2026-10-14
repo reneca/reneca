@@ -107,16 +107,29 @@ def fetch_budget():
 {% else %}
     key = api_get('/key/info', token)['info']
     team = None
+    member = None
     if key.get('team_id'):
         team_id = urllib.parse.quote(str(key['team_id']), safe='')
-        info = api_get(f'/team/info?team_id={team_id}', token)['team_info']
+        resp = api_get(f'/team/info?team_id={team_id}', token)
+        info = resp['team_info']
         team = {field: info.get(field) for field in BUDGET_FIELDS} | {
             'alias': info.get('team_alias'),
         }
+        for m in resp.get('team_memberships') or []:
+            if m.get('user_id') == key.get('user_id') and m.get('litellm_budget_table'):
+                table = m['litellm_budget_table']
+                member = {
+                    'spend': m.get('spend'),
+                    'max_budget': table.get('max_budget'),
+                    # Member budgets carry no duration; they reset monthly on the 1st.
+                    'budget_duration': table.get('budget_duration') or '30d',
+                    'budget_reset_at': table.get('budget_reset_at'),
+                }
     return {
         'ts': time.time(),
         'portal_url': PORTAL_URL,
         'key': {field: key.get(field) for field in BUDGET_FIELDS},
+        'member': member,
         'team': team,
     }
 {% endif %}
@@ -235,7 +248,9 @@ def pace_delta(budget):
         return None
 
 
-def usd(value):
+def usd(value, precise=False):
+    if precise:
+        return f'${value:.2f}'
     return f'${value / 1000:.1f}k' if value >= 1000 else f'${value:.0f}'
 
 
@@ -246,7 +261,7 @@ def bar(pct, width=10):
     return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
 
 
-def budget_segment(label, budget, show_remaining=False):
+def budget_segment(label, budget, show_remaining=False, show_pace=True, precise=False):
     if not budget:
         return None
     try:
@@ -260,12 +275,12 @@ def budget_segment(label, budget, show_remaining=False):
     pct = spend / max_budget * 100
     if show_remaining:
         remaining = max(float(budget.get('remaining', max_budget - spend)), 0)
-        amount = f'{usd(remaining)} left'
+        amount = f'{usd(remaining, precise)} left'
     else:
-        amount = f'{usd(spend)}/{usd(max_budget)}'
+        amount = f'{usd(spend, precise)}/{usd(max_budget, precise)}'
     segment = f'{label} {bar(pct)} {pct:.0f}% {amount}'
 
-    delta = pace_delta(budget)
+    delta = pace_delta(budget) if show_pace else None
     if delta is not None:
         color, arrow = (RED, '▲') if delta > 0 else (GREEN, '▼')
         segment += f' {color}{arrow}{delta:+.0f}%{RESET}'
@@ -335,7 +350,8 @@ if segment:
 {% else %}
 team = budget.get('team')
 segments = [
-    budget_segment('🔑', budget.get('key')),
+    budget_segment('🔑', budget.get('key'), show_pace=False, precise=True),
+    budget_segment('👤', budget.get('member'), precise=True),
     budget_segment(f"👥 {team.get('alias') or 'team'}" if team else '👥 team', team),
 ]
 segments = [segment for segment in segments if segment]
