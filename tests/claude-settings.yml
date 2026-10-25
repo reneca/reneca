@@ -101,10 +101,10 @@
                 base_url: ""
                 openrouter_enabled: false
                 auth_token: ""
-                model: opus
-                opus_model: claude-opus
-                sonnet_model: claude-sonnet
-                haiku_model: claude-haiku
+                model: ""
+                opus_model: ""
+                sonnet_model: ""
+                haiku_model: ""
               lmstudio: {}
               ollama: {}
           loop_control:
@@ -175,13 +175,14 @@
                       '~anthropic/claude-haiku-latest',
                   )),
                   ('openrouter-custom', 'sonnet', ('provider/large', 'provider/medium', 'provider/small')),
-                  ('native', 'opus', ('claude-opus', 'claude-sonnet', 'claude-haiku')),
               ]:
                   settings = json.loads((folder / f'{name}.json').read_text())
                   assert settings['model'] == model, name
                   for tier, expected in zip(('OPUS', 'SONNET', 'HAIKU'), tiers):
                       assert settings['env'][f'ANTHROPIC_DEFAULT_{tier}_MODEL'] == expected, (name, tier)
-              assert 'ANTHROPIC_BASE_URL' not in settings['env']
+              settings = json.loads((folder / 'native.json').read_text())
+              assert 'model' not in settings
+              assert not any(k.startswith('ANTHROPIC_') for k in settings['env'])
           changed_when: false
 
         - name: Read Claude status line scenarios
@@ -205,6 +206,21 @@
               - "'/team/info' not in (claude_status_lines.results[1].content | b64decode)"
               - "'load_budget' not in (claude_status_lines.results[2].content | b64decode)"
               - "'urllib.request' not in (claude_status_lines.results[2].content | b64decode)"
+
+        - name: Verify Claude account usage in status line
+          ansible.builtin.command:
+            argv:
+              - "{{ ansible_playbook_python }}"
+              - "{{ claude_test_folder.path }}/statusline-no-helper.py"
+            stdin: >-
+              {"model": {"display_name": "Sonnet"}, "workspace": {"current_dir": "/tmp"},
+              "cost": {"total_cost_usd": 0}, "context_window": {"used_percentage": null},
+              "rate_limits": {"five_hour": {"used_percentage": 42.4}, "seven_day": {"used_percentage": 7}}}
+          register: claude_usage_line
+          changed_when: false
+          failed_when: >-
+            '5h' not in claude_usage_line.stdout or '42%' not in claude_usage_line.stdout
+            or '7d' not in claude_usage_line.stdout or '7%' not in claude_usage_line.stdout
 
         - name: Verify working-day budget pace
           ansible.builtin.command:

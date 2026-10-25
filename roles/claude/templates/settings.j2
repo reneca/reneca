@@ -1,6 +1,10 @@
 {% set api_key_helper = claude_code.api_key_helper | default('', true) %}
 {% set base_url = claude_code.base_url | default('', true) %}
 {% set auth_token = claude_code.auth_token | default('', true) %}
+{% set model = claude_code.model | default('', true) %}
+{% set opus_model = claude_code.opus_model | default(model, true) %}
+{% set sonnet_model = claude_code.sonnet_model | default(model, true) %}
+{% set haiku_model = claude_code.haiku_model | default(model, true) %}
 {
 {% if api_key_helper != '' and base_url != '' %}
   "apiKeyHelper": {{ api_key_helper | to_json }},
@@ -12,10 +16,6 @@
     "API_FORCE_IDLE_TIMEOUT": "0",
     "CLAUDE_CODE_DISABLE_UNKNOWN_MODEL_WINDOW_ENFORCEMENT": "1",
 {% endif %}
-    "DISABLE_TELEMETRY": "1",
-    "ENABLE_TOOL_SEARCH": "true",
-    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
-    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1",
 {% if base_url != '' %}
 {% if api_key_helper != '' %}
     "CLAUDE_CODE_API_KEY_HELPER_TTL_MS": "21600000",
@@ -25,11 +25,25 @@
 {% endif %}
     "ANTHROPIC_BASE_URL": {{ base_url | to_json }},
 {% endif %}
-    "ANTHROPIC_DEFAULT_OPUS_MODEL": {{ claude_code.opus_model | default(claude_code.model, true) | to_json }},
-    "ANTHROPIC_DEFAULT_SONNET_MODEL": {{ claude_code.sonnet_model | default(claude_code.model, true) | to_json }},
-    "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ claude_code.haiku_model | default(claude_code.model, true) | to_json }}
+{% if opus_model != '' %}
+    "ANTHROPIC_DEFAULT_OPUS_MODEL": {{ opus_model | to_json }},
+{% endif %}
+{% if sonnet_model != '' %}
+    "ANTHROPIC_DEFAULT_SONNET_MODEL": {{ sonnet_model | to_json }},
+{% endif %}
+{% if haiku_model != '' %}
+    "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ haiku_model | to_json }},
+{% endif %}
+    "BASH_DEFAULT_TIMEOUT_MS": "300000",
+    "BASH_MAX_TIMEOUT_MS": "900000",
+    "DISABLE_TELEMETRY": "1",
+    "ENABLE_TOOL_SEARCH": "true",
+    "CLAUDE_CODE_ENABLE_GATEWAY_MODEL_DISCOVERY": "1",
+    "CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC": "1"
   },
-  "model": {{ claude_code.model | to_json }},
+{% if model != '' %}
+  "model": {{ model | to_json }},
+{% endif %}
   "permissions": {
     "defaultMode": "acceptEdits",
     "additionalDirectories": [ "/tmp" ],
@@ -50,6 +64,7 @@
       "Bash(git diff:*)",
       "Bash(git grep:*)",
       "Bash(git log:*)",
+      "Bash(git ls-tree:*)",
       "Bash(git ls-remote:*)",
       "Bash(git show:*)",
       "Bash(git status:*)",

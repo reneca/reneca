@@ -1,5 +1,5 @@
-{% set api_key_helper = claude_code.api_key_helper | default('', true) -%}
 {% set base_url = claude_code.base_url | default('', true) -%}
+{% set api_key_helper = claude_code.api_key_helper | default('', true) if base_url != '' else '' -%}
 {% set openrouter_enabled = claude_code.openrouter_enabled | default(false) | bool -%}
 #!/usr/bin/env python3
 import json
@@ -23,8 +23,16 @@ GREEN = '\033[32m'
 RED = '\033[31m'
 ORANGE = '\033[33m'
 RESET = '\033[0m'
-{% if api_key_helper != '' %}
 DIM = '\033[2m'
+
+
+def bar(pct, width=10):
+    bounded_pct = min(max(pct, 0), 100)
+    filled = round(bounded_pct / 100 * width)
+    color = GREEN if pct < 50 else ORANGE if pct < 80 else RED
+    return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
+
+{% if api_key_helper != '' %}
 
 PORTAL_URL = {{ base_url | to_json }}.rstrip('/')
 KEY_HELPER = os.path.expanduser({{ api_key_helper | to_json }})
@@ -254,13 +262,6 @@ def usd(value, precise=False):
     return f'${value / 1000:.1f}k' if value >= 1000 else f'${value:.0f}'
 
 
-def bar(pct, width=10):
-    bounded_pct = min(max(pct, 0), 100)
-    filled = round(bounded_pct / 100 * width)
-    color = GREEN if pct < 50 else ORANGE if pct < 80 else RED
-    return f"{color}{'█' * filled}{DIM}{'░' * (width - filled)}{RESET}"
-
-
 def budget_segment(label, budget, show_remaining=False, precise=False):
     if not budget:
         return None
@@ -358,4 +359,14 @@ segments = [segment for segment in segments if segment]
 if segments:
     print(' | '.join(segments))
 {% endif %}
+{% else %}
+# Claude.ai subscription usage, only provided for Pro/Max accounts
+rate_limits = data.get('rate_limits') or {}
+usage = []
+for key, label in (('five_hour', '5h'), ('seven_day', '7d')):
+    pct = (rate_limits.get(key) or {}).get('used_percentage')
+    if pct is not None:
+        usage.append(f'{label} {bar(pct)} {pct:.0f}%')
+if usage:
+    print(f"🧠 Claude {' | '.join(usage)}")
 {% endif %}

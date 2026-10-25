@@ -87,7 +87,7 @@
       {%- elif claude_code_openrouter_enabled -%}
         ~anthropic/claude-opus-latest
       {%- else -%}
-        claude-opus
+        {{ '' }}
       {%- endif -%}
     claude_code_default_sonnet_model: >-
       {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
@@ -103,7 +103,7 @@
       {%- elif claude_code_openrouter_enabled -%}
         ~anthropic/claude-sonnet-latest
       {%- else -%}
-        claude-sonnet
+        {{ '' }}
       {%- endif -%}
     claude_code_default_haiku_model: >-
       {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
@@ -115,15 +115,15 @@
       {%- elif claude_code_openrouter_enabled -%}
         ~anthropic/claude-haiku-latest
       {%- else -%}
-        claude-haiku
+        {{ '' }}
       {%- endif -%}
 
 - name: Validate Claude Code models
   ansible.builtin.assert:
     that:
       - item is string
-      - item | trim | length > 0
-    fail_msg: Claude Code model names must be non-empty strings.
+      - claude_code.base_url | trim | length == 0 or item | trim | length > 0
+    fail_msg: Claude Code model names must be strings, non-empty when a custom endpoint is used.
   loop:
     - "{{ claude_code.model }}"
     - "{{ claude_code.opus_model }}"

@@ -27,13 +27,9 @@
       when: >
         has_gui is defined and has_gui == true
 
-    # Install and configure Claude code only if it can be use
+    # Install and configure Claude Code. Endpoint priority: ANTHROPIC_BASE_URL,
+    # LM Studio, Ollama, OpenRouter, then the Claude account (login) as fallback.
     - role: claude
-      when: >
-        lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != ''
-        or (lmstudio is defined and lmstudio.host is defined)
-        or ollama.host is defined
-        or lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != ''
 
     # Install and configure Codex
     - role: codex
