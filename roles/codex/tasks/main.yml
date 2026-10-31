@@ -82,10 +82,4 @@
 
 - name: Update Codex OSS alias
   ansible.builtin.include_tasks: alias.yml
-
-- name: Personal AGENTS.md
-  ansible.builtin.copy:
-    mode: "0640"
-    src: AGENTS.md
-    dest: "{{ codex_home }}/AGENTS.md"
 ...

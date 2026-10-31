@@ -1,0 +1,8 @@
+---
+# Personal instructions (files/AGENTS.md), deployed only where the agent home exists.
+# codex_home comes from the codex role.
+ai_instruction_files:
+  - "{{ ansible_facts['env']['HOME'] }}/.claude/CLAUDE.md"
+  - "{{ codex_home }}/AGENTS.md"
+  - "{{ lookup('ansible.builtin.env', 'VIBE_HOME') | default(ansible_facts['env']['HOME'] + '/.vibe', true) }}/AGENTS.md"
+...

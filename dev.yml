@@ -34,6 +34,9 @@
     # Install and configure Codex
     - role: codex
 
+    # Deploy personal AGENTS.md to installed AI agents (Claude Code, Codex, Vibe)
+    - role: ai
+
   tasks:
     - name: Playbook facts
       ansible.builtin.debug:

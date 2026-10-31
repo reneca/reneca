@@ -1,17 +1,11 @@
 ---
-- name: Check if Claude Code is already installed
-  ansible.builtin.stat:
-    path: "{{ ansible_facts['env']['HOME'] }}/.local/bin/claude"
-  register: claude_installed
-
 - name: Install Claude Code
   ansible.builtin.shell: |
     set -o pipefail
     curl -fsSL https://claude.ai/install.sh | bash
   args:
     executable: /bin/bash
-  changed_when: true
-  when: not claude_installed.stat.exists
+    creates: "{{ ansible_facts['env']['HOME'] }}/.local/bin/claude"
 
 - name: Ensure Claude configuration folder exists
   ansible.builtin.file:
@@ -150,9 +144,3 @@
     mode: "0750"
     src: "templates/statusline.j2"
     dest: "~/.claude/statusline.py"
-
-- name: Personnal CLAUDE.md
-  ansible.builtin.copy:
-    mode: "0640"
-    src: CLAUDE.md
-    dest: ~/.claude/CLAUDE.md

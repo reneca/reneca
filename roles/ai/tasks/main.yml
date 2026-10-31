@@ -1,0 +1,17 @@
+---
+- name: Check which AI agent homes exist
+  ansible.builtin.stat:
+    path: "{{ item | dirname }}"
+  loop: "{{ ai_instruction_files }}"
+  register: ai_homes_stat
+
+- name: Deploy personal agent instructions
+  ansible.builtin.copy:
+    mode: "0640"
+    src: AGENTS.md
+    dest: "{{ item.item }}"
+  loop: "{{ ai_homes_stat.results }}"
+  loop_control:
+    label: "{{ item.item }}"
+  when: item.stat.exists
+...

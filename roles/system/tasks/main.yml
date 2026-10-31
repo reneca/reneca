@@ -35,6 +35,24 @@
     - font-hack-nerd-font
   when: ansible_facts['os_family'] == "Darwin"
 
+- name: Check if uv is already installed
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop:
+    - "{{ ansible_facts['env']['HOME'] }}/.local/bin/uv"
+    - /usr/local/bin/uv
+    - /opt/homebrew/bin/uv
+  register: uv_installed
+
+- name: Install uv
+  ansible.builtin.shell: |
+    set -o pipefail
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+  args:
+    executable: /bin/bash
+  changed_when: true
+  when: not (uv_installed.results | map(attribute='stat.exists') | select | list)
+
 - name: Check if Docker is installed
   ansible.builtin.command: which docker
   register: docker_installed
