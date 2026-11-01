@@ -1,0 +1,92 @@
+---
+- name: Check if GitHub CLI is already installed
+  ansible.builtin.command:
+    argv:
+      - which
+      - gh
+  register: gh_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install GitHub CLI with Homebrew (macOS)
+  community.general.homebrew:
+    name: gh
+    state: present
+  when:
+    - gh_installed.rc != 0
+    - ansible_facts['os_family'] == "Darwin"
+
+- name: Install GitHub CLI from release archive (Linux)
+  when:
+    - gh_installed.rc != 0
+    - ansible_facts['system'] == "Linux"
+  block:
+    - name: Get latest GitHub CLI release
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/cli/cli/releases/latest
+        return_content: true
+      register: gh_release
+
+    - name: Create temporary GitHub CLI directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: gh.
+      register: gh_temp
+
+    - name: Download and extract GitHub CLI archive
+      ansible.builtin.unarchive:
+        src: "https://github.com/cli/cli/releases/download/{{ gh_release.json.tag_name }}/gh_{{ gh_version }}_linux_{{ gh_arch }}.tar.gz"
+        dest: "{{ gh_temp.path }}"
+        remote_src: true
+
+    - name: Ensure local bin folder exists
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.local/bin"
+        state: directory
+        mode: "0755"
+
+    - name: Install GitHub CLI binary
+      ansible.builtin.copy:
+        src: "{{ gh_temp.path }}/gh_{{ gh_version }}_linux_{{ gh_arch }}/bin/gh"
+        dest: "{{ ansible_facts['env']['HOME'] }}/.local/bin/gh"
+        remote_src: true
+        mode: "0755"
+  vars:
+    gh_version: "{{ gh_release.json.tag_name | regex_replace('^v', '') }}"
+    gh_arch: >-
+      {{ {'x86_64': 'amd64', 'aarch64': 'arm64', 'armv7l': 'armv6'}[ansible_facts['architecture']] }}
+  always:
+    - name: Remove temporary GitHub CLI directory
+      ansible.builtin.file:
+        path: "{{ gh_temp.path }}"
+        state: absent
+      when: gh_temp.path is defined
+
+- name: Find GitHub CLI after installation
+  ansible.builtin.command:
+    argv:
+      - which
+      - gh
+  register: gh_executable
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: "{{ ansible_facts['env']['HOME'] }}/.local/bin:{{ ansible_facts['env']['PATH'] }}"
+
+- name: Get GitHub CLI version
+  ansible.builtin.command:
+    argv:
+      - "{{ gh_executable.stdout }}"
+      - --version
+  register: gh_version_result
+  changed_when: false
+  when: gh_executable.rc == 0
+
+- name: Set GitHub CLI facts  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    gh:
+      version: "{{ gh_version_result.stdout_lines[0].split()[2] }}"
+  when:
+    - gh_version_result.rc | default(1) == 0
+    - gh_version_result.stdout_lines | default([]) | length > 0
+...

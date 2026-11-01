@@ -13,6 +13,8 @@
 
     - role: rust
 
+    - role: gh
+
     - role: vscode
       when: >
         has_gui is defined and has_gui == true
@@ -51,6 +53,11 @@
             name: "Rust",
             value: "{{ {'version': rust.version} }}",
             when: "{{ rust.version is defined }}",
+          }
+        - {
+            name: "GitHub CLI",
+            value: "{{ gh | default(omit) }}",
+            when: "{{ gh is defined and gh.version is defined }}",
           }
         - {
             name: "VSCode",
