@@ -5,6 +5,7 @@
 {% set opus_model = claude_code.opus_model | default(model, true) %}
 {% set sonnet_model = claude_code.sonnet_model | default(model, true) %}
 {% set haiku_model = claude_code.haiku_model | default(model, true) %}
+{% set otel_endpoint = claude_code.otel_endpoint | default('', true) %}
 {
 {% if api_key_helper != '' and base_url != '' %}
   "apiKeyHelper": {{ api_key_helper | to_json }},
@@ -33,6 +34,13 @@
 {% endif %}
 {% if haiku_model != '' %}
     "ANTHROPIC_DEFAULT_HAIKU_MODEL": {{ haiku_model | to_json }},
+{% endif %}
+{% if otel_endpoint != '' %}
+    "CLAUDE_CODE_ENABLE_TELEMETRY": "1",
+    "OTEL_METRICS_EXPORTER": "otlp",
+    "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative",
+    "OTEL_EXPORTER_OTLP_PROTOCOL": {{ claude_code.otel_protocol | to_json }},
+    "OTEL_EXPORTER_OTLP_ENDPOINT": {{ otel_endpoint | to_json }},
 {% endif %}
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "900000",

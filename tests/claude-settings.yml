@@ -107,6 +107,17 @@
                 haiku_model: ""
               lmstudio: {}
               ollama: {}
+            - name: otel
+              claude_code:
+                api_key_helper: ""
+                base_url: ""
+                openrouter_enabled: false
+                auth_token: ""
+                model: ""
+                otel_endpoint: http://localhost:4318
+                otel_protocol: http/protobuf
+              lmstudio: {}
+              ollama: {}
           loop_control:
             label: "{{ item.name }}"
 
@@ -183,6 +194,14 @@
               settings = json.loads((folder / 'native.json').read_text())
               assert 'model' not in settings
               assert not any(k.startswith('ANTHROPIC_') for k in settings['env'])
+              assert not any(k.startswith('OTEL_') for k in settings['env'])
+              assert 'CLAUDE_CODE_ENABLE_TELEMETRY' not in settings['env']
+              env = json.loads((folder / 'otel.json').read_text())['env']
+              assert env['CLAUDE_CODE_ENABLE_TELEMETRY'] == '1'
+              assert env['OTEL_METRICS_EXPORTER'] == 'otlp'
+              assert env['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] == 'cumulative'
+              assert env['OTEL_EXPORTER_OTLP_PROTOCOL'] == 'http/protobuf'
+              assert env['OTEL_EXPORTER_OTLP_ENDPOINT'] == 'http://localhost:4318'
           changed_when: false
 
         - name: Read Claude status line scenarios

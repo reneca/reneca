@@ -61,12 +61,16 @@
         {%- else -%}
           {{ '' }}
         {%- endif %}
+      # OTLP_ENDPOINT scheme selects the protocol: grpc(s):// for gRPC, http(s):// for HTTP.
+      otel_endpoint: "{{ claude_code_otlp_endpoint | regex_replace('^grpc(s?)://', 'http\\1://') }}"
+      otel_protocol: "{{ 'grpc' if claude_code_otlp_endpoint is match('grpcs?://') else 'http/protobuf' }}"
       model: "{{ claude_code.model | default(claude_code_default_sonnet_model, true) }}"
       opus_model: "{{ claude_code.opus_model | default(claude_code_default_opus_model, true) }}"
       sonnet_model: "{{ claude_code.sonnet_model | default(claude_code_default_sonnet_model, true) }}"
       haiku_model: "{{ claude_code.haiku_model | default(claude_code_default_haiku_model, true) }}"
   vars:
     claude_code_openrouter_enabled: "{{ lookup('ansible.builtin.env', 'OPENROUTER_API_KEY', default='') != '' }}"
+    claude_code_otlp_endpoint: "{{ lookup('ansible.builtin.env', 'OTLP_ENDPOINT', default='') }}"
     claude_code_default_opus_model: >-
       {% if lookup('ansible.builtin.env', 'ANTHROPIC_BASE_URL', default='') != '' -%}
         claude-opus
@@ -131,6 +135,12 @@
         (claude_code.base_url | default('', true)) == ''
         or claude_code.base_url is match('^https?://')
     fail_msg: Claude API base URL must use HTTP or HTTPS.
+
+- name: Validate Claude Code OpenTelemetry exporter
+  ansible.builtin.assert:
+    that:
+      - claude_code.otel_endpoint == '' or claude_code.otel_endpoint is match('^https?://')
+    fail_msg: Claude Code OTLP_ENDPOINT must use grpc, grpcs, http or https.
 
 - name: Claude Code settings
   ansible.builtin.template:
