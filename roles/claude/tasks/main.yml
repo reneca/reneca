@@ -64,6 +64,7 @@
       # OTLP_ENDPOINT scheme selects the protocol: grpc(s):// for gRPC, http(s):// for HTTP.
       otel_endpoint: "{{ claude_code_otlp_endpoint | regex_replace('^grpc(s?)://', 'http\\1://') }}"
       otel_protocol: "{{ 'grpc' if claude_code_otlp_endpoint is match('grpcs?://') else 'http/protobuf' }}"
+      otel_host_name: "{{ ansible_facts['hostname'] }}"
       model: "{{ claude_code.model | default(claude_code_default_sonnet_model, true) }}"
       opus_model: "{{ claude_code.opus_model | default(claude_code_default_opus_model, true) }}"
       sonnet_model: "{{ claude_code.sonnet_model | default(claude_code_default_sonnet_model, true) }}"

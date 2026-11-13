@@ -116,6 +116,7 @@
                 model: ""
                 otel_endpoint: http://localhost:4318
                 otel_protocol: http/protobuf
+                otel_host_name: example-host
               lmstudio: {}
               ollama: {}
           loop_control:
@@ -202,6 +203,7 @@
               assert env['OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE'] == 'cumulative'
               assert env['OTEL_EXPORTER_OTLP_PROTOCOL'] == 'http/protobuf'
               assert env['OTEL_EXPORTER_OTLP_ENDPOINT'] == 'http://localhost:4318'
+              assert env['OTEL_RESOURCE_ATTRIBUTES'] == 'host.name=example-host'
           changed_when: false
 
         - name: Read Claude status line scenarios

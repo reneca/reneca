@@ -41,6 +41,7 @@
     "OTEL_EXPORTER_OTLP_METRICS_TEMPORALITY_PREFERENCE": "cumulative",
     "OTEL_EXPORTER_OTLP_PROTOCOL": {{ claude_code.otel_protocol | to_json }},
     "OTEL_EXPORTER_OTLP_ENDPOINT": {{ otel_endpoint | to_json }},
+    "OTEL_RESOURCE_ATTRIBUTES": {{ ('host.name=' ~ claude_code.otel_host_name) | to_json }},
 {% endif %}
     "BASH_DEFAULT_TIMEOUT_MS": "300000",
     "BASH_MAX_TIMEOUT_MS": "900000",
