@@ -13,7 +13,7 @@
 
     - role: rust
 
-    - role: gh
+    - role: git
 
     - role: vscode
       when: >
@@ -55,9 +55,9 @@
             when: "{{ rust.version is defined }}",
           }
         - {
-            name: "GitHub CLI",
-            value: "{{ gh | default(omit) }}",
-            when: "{{ gh is defined and gh.version is defined }}",
+            name: "Git CLI",
+            value: "{{ {'gh': gh.version | default(omit), 'glab': glab.version | default(omit)} }}",
+            when: "{{ gh.version is defined or glab.version is defined }}",
           }
         - {
             name: "VSCode",

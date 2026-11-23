@@ -1,0 +1,7 @@
+---
+- name: Install GitHub CLI
+  ansible.builtin.import_tasks: gh.yml
+
+- name: Install GitLab CLI
+  ansible.builtin.import_tasks: glab.yml
+...

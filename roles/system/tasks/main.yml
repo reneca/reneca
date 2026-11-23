@@ -53,6 +53,20 @@
   changed_when: true
   when: not (uv_installed.results | map(attribute='stat.exists') | select | list)
 
+- name: Install uv tools
+  ansible.builtin.command:
+    argv:
+      - uv
+      - tool
+      - install
+      - "{{ item }}"
+  loop:
+    - markitdown[all]
+  register: uv_tool_install
+  changed_when: "'Installed' in uv_tool_install.stderr"
+  environment:
+    PATH: "{{ ansible_facts['env']['HOME'] }}/.local/bin:{{ ansible_facts['env']['PATH'] }}"
+
 - name: Check if Docker is installed
   ansible.builtin.command: which docker
   register: docker_installed

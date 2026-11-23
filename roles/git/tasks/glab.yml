@@ -1,0 +1,93 @@
+---
+- name: Check if GitLab CLI is already installed
+  ansible.builtin.command:
+    argv:
+      - which
+      - glab
+  register: git_glab_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install GitLab CLI with Homebrew (macOS)
+  community.general.homebrew:
+    name: glab
+    state: present
+  when:
+    - git_glab_installed.rc != 0
+    - ansible_facts['os_family'] == "Darwin"
+
+- name: Install GitLab CLI from release archive (Linux)
+  when:
+    - git_glab_installed.rc != 0
+    - ansible_facts['system'] == "Linux"
+  vars:
+    git_glab_version: "{{ git_glab_release.json.tag_name | regex_replace('^v', '') }}"
+    git_glab_arch: >-
+      {{ {'x86_64': 'amd64', 'aarch64': 'arm64', 'armv7l': 'armv6'}[ansible_facts['architecture']] }}
+    git_glab_archive: "glab_{{ git_glab_version }}_linux_{{ git_glab_arch }}.tar.gz"
+  block:
+    - name: Get latest GitLab CLI release
+      ansible.builtin.uri:
+        url: https://gitlab.com/api/v4/projects/gitlab-org%2Fcli/releases/permalink/latest
+        return_content: true
+      register: git_glab_release
+
+    - name: Create temporary GitLab CLI directory
+      ansible.builtin.tempfile:
+        state: directory
+        prefix: glab.
+      register: git_glab_temp
+
+    - name: Download and extract GitLab CLI archive
+      ansible.builtin.unarchive:
+        src: "https://gitlab.com/gitlab-org/cli/-/releases/{{ git_glab_release.json.tag_name }}/downloads/{{ git_glab_archive }}"
+        dest: "{{ git_glab_temp.path }}"
+        remote_src: true
+
+    - name: Ensure local bin folder exists
+      ansible.builtin.file:
+        path: "{{ ansible_facts['env']['HOME'] }}/.local/bin"
+        state: directory
+        mode: "0755"
+
+    - name: Install GitLab CLI binary
+      ansible.builtin.copy:
+        src: "{{ git_glab_temp.path }}/bin/glab"
+        dest: "{{ ansible_facts['env']['HOME'] }}/.local/bin/glab"
+        remote_src: true
+        mode: "0755"
+  always:
+    - name: Remove temporary GitLab CLI directory
+      ansible.builtin.file:
+        path: "{{ git_glab_temp.path }}"
+        state: absent
+      when: git_glab_temp.path is defined
+
+- name: Find GitLab CLI after installation
+  ansible.builtin.command:
+    argv:
+      - which
+      - glab
+  register: git_glab_executable
+  changed_when: false
+  failed_when: false
+  environment:
+    PATH: "{{ ansible_facts['env']['HOME'] }}/.local/bin:{{ ansible_facts['env']['PATH'] }}"
+
+- name: Get GitLab CLI version
+  ansible.builtin.command:
+    argv:
+      - "{{ git_glab_executable.stdout }}"
+      - --version
+  register: git_glab_version_result
+  changed_when: false
+  when: git_glab_executable.rc == 0
+
+- name: Set GitLab CLI facts  # noqa: var-naming[no-role-prefix]
+  ansible.builtin.set_fact:
+    glab:
+      version: "{{ git_glab_version_result.stdout | regex_search('\\d+\\.\\d+\\.\\d+') }}"
+  when:
+    - git_glab_version_result.rc | default(1) == 0
+    - git_glab_version_result.stdout | default('') is search('\\d+\\.\\d+\\.\\d+')
+...
