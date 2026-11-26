@@ -16,9 +16,8 @@ No need to explain low-level concepts (memory, concurrency, ownership, lifetimes
 
 ## Code
 
-- Before coding, identify constraints, edge cases, and failure modes.
+- Handle the edge cases and failure modes of the code you change.
 - Simplest correct solution. If a fix needs a workaround, the design is wrong — propose the design fix before applying it.
-- If multiple approaches exist, reason about trade-offs before picking one.
 - Reuse first: framework methods, crate re-exports, existing helpers. Search before adding a helper or dependency.
 - Replacing an API: replace it fully. No deprecated aliases or compat shims.
 - Rust errors (when error handling is in scope): typed (`thiserror`), no `unwrap`/panic on runtime paths, never catch panics to hide them.
