@@ -6,6 +6,7 @@
 {% set sonnet_model = claude_code.sonnet_model | default(model, true) %}
 {% set haiku_model = claude_code.haiku_model | default(model, true) %}
 {% set otel_endpoint = claude_code.otel_endpoint | default('', true) %}
+{% set hooks_url = claude_code.hooks_url | default('', true) %}
 {
 {% if api_key_helper != '' and base_url != '' %}
   "apiKeyHelper": {{ api_key_helper | to_json }},
@@ -120,6 +121,13 @@
     "command": "~/.claude/statusline.py",
     "padding": 0
   },
+{% if hooks_url != '' %}
+  "hooks": {
+{% for event in ['SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PermissionRequest', 'PostToolUse', 'PostToolUseFailure', 'Notification', 'Stop', 'StopFailure', 'SessionEnd'] %}
+    {{ event | to_json }}: [{ "hooks": [{ "type": "http", "url": {{ hooks_url | to_json }}, "timeout": 2 }] }]{{ ',' if not loop.last }}
+{% endfor %}
+  },
+{% endif %}
   "enabledPlugins": {
     "rust-analyzer-lsp@claude-plugins-official": true,
     "skill-creator@claude-plugins-official": true

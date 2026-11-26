@@ -50,6 +50,11 @@
             when: "{{ has_gui is defined }}",
           }
         - {
+            name: "Stream Deck",
+            value: "{{ has_streamdeck | default(omit) }}",
+            when: "{{ has_streamdeck is defined }}",
+          }
+        - {
             name: "Rust",
             value: "{{ {'version': rust.version} }}",
             when: "{{ rust.version is defined }}",

@@ -119,6 +119,16 @@
                 otel_host_name: example-host
               lmstudio: {}
               ollama: {}
+            - name: streamdeck
+              claude_code:
+                api_key_helper: ""
+                base_url: ""
+                openrouter_enabled: false
+                auth_token: ""
+                model: ""
+                hooks_url: http://127.0.0.1:27461/claude
+              lmstudio: {}
+              ollama: {}
           loop_control:
             label: "{{ item.name }}"
 
@@ -197,6 +207,16 @@
               assert not any(k.startswith('ANTHROPIC_') for k in settings['env'])
               assert not any(k.startswith('OTEL_') for k in settings['env'])
               assert 'CLAUDE_CODE_ENABLE_TELEMETRY' not in settings['env']
+              assert 'hooks' not in settings
+              hooks = json.loads((folder / 'streamdeck.json').read_text())['hooks']
+              assert sorted(hooks) == sorted([
+                  'SessionStart', 'UserPromptSubmit', 'PreToolUse', 'PermissionRequest', 'PostToolUse',
+                  'PostToolUseFailure', 'Notification', 'Stop', 'StopFailure', 'SessionEnd',
+              ])
+              for entries in hooks.values():
+                  assert entries == [{'hooks': [
+                      {'type': 'http', 'url': 'http://127.0.0.1:27461/claude', 'timeout': 2},
+                  ]}]
               env = json.loads((folder / 'otel.json').read_text())['env']
               assert env['CLAUDE_CODE_ENABLE_TELEMETRY'] == '1'
               assert env['OTEL_METRICS_EXPORTER'] == 'otlp'

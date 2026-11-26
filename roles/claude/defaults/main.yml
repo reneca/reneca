@@ -1,0 +1,4 @@
+---
+# Local port for Claude Code Hooks
+claude_code_hooks_port: 27461
+...

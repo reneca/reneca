@@ -27,6 +27,24 @@
   ansible.builtin.set_fact:
     has_gui: "{{ has_gui_check.stdout == 'true' }}"
 
+# Elgato USB vendor id 0x0fd9. On WSL the deck is visible once attached with usbipd.
+- name: Check for an Elgato Stream Deck
+  ansible.builtin.shell: |
+    if [ "$(uname)" = "Darwin" ]; then
+      [[ "$(ioreg -p IOUSB -l -w0)" == *'"idVendor" = 4057'* ]]
+    else
+      grep -qsx 0fd9 /sys/bus/usb/devices/*/idVendor
+    fi
+  args:
+    executable: /bin/bash
+  register: has_streamdeck_check
+  changed_when: false
+  failed_when: false
+
+- name: Set Stream Deck fact
+  ansible.builtin.set_fact:
+    has_streamdeck: "{{ has_streamdeck_check.rc == 0 }}"
+
 - name: Install Homebrew pre-requisite for MacOS
   community.general.homebrew_cask:
     name: "{{ item }}"

@@ -65,6 +65,8 @@
       otel_endpoint: "{{ claude_code_otlp_endpoint | regex_replace('^grpc(s?)://', 'http\\1://') }}"
       otel_protocol: "{{ 'grpc' if claude_code_otlp_endpoint is match('grpcs?://') else 'http/protobuf' }}"
       otel_host_name: "{{ ansible_facts['hostname'] }}"
+      hooks_url: >-
+        {{ ('http://127.0.0.1:' ~ claude_code_hooks_port ~ '/claude') if has_streamdeck | default(false) else '' }}
       model: "{{ claude_code.model | default(claude_code_default_sonnet_model, true) }}"
       opus_model: "{{ claude_code.opus_model | default(claude_code_default_opus_model, true) }}"
       sonnet_model: "{{ claude_code.sonnet_model | default(claude_code_default_sonnet_model, true) }}"
