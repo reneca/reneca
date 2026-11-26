@@ -45,14 +45,9 @@
         msg: "{{ item.value }}"
       loop:
         - {
-            name: "GUI",
-            value: "{{ has_gui | default(omit) }}",
-            when: "{{ has_gui is defined }}",
-          }
-        - {
-            name: "Stream Deck",
-            value: "{{ has_streamdeck | default(omit) }}",
-            when: "{{ has_streamdeck is defined }}",
+            name: "System",
+            value: "{{ {'gui': has_gui | default(omit), 'streamdeck': has_streamdeck | default(omit)} }}",
+            when: "{{ has_gui is defined or has_streamdeck is defined }}",
           }
         - {
             name: "Rust",
